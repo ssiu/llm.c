@@ -348,7 +348,6 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
 #define TILE_WIDTH 8
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
-// we use launch bounds to indicate 256 threads per block at compile time
 __global__ __launch_bounds__(256)
 void fused_matmul_forward_gelu_kernel(float* out,
                      float* inp, float* weight, float* bias,
@@ -951,7 +950,7 @@ void fused_matmul_forward_gelu(float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
     dim3 blockDim(256);
-    dim3 gridDim(OC / TILE_WIDTH, B * T / TILE_WIDTH);
+    dim3 gridDim(OC / 128, B * T / 128);
     fused_matmul_forward_gelu_kernel<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
 }
 
