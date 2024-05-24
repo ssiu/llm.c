@@ -398,7 +398,7 @@ void matmul_forward4(float* out,
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
     if (thread_id < 32) {
-        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id])
+        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id]);
     }
 
     __syncthreads();
@@ -479,7 +479,7 @@ void matmul_forward4(float* out,
     for (int i=0; i<8;i++){
         #pragma unroll
         for (int j=0; j<8; j++) {
-            accum[i+8*j] = 0.5f * accum[i+8*j] * (1.0f + tanhf(GELU_SCALING_FACTOR * (accum[i+8*j] + accum[i+8*j] * accum[i+8*j] * accum[i+8*j])))
+            accum[i+8*j] = 0.5f * accum[i+8*j] * (1.0f + tanhf(GELU_SCALING_FACTOR * (accum[i+8*j] + accum[i+8*j] * accum[i+8*j] * accum[i+8*j])));
         }
     }
 
