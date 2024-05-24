@@ -350,7 +350,7 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
 
 // we use launch bounds to indicate 256 threads per block at compile time
 __global__ __launch_bounds__(256)
-void matmul_forward4(float* out,
+void fused_matmul_forward_gelu_kernel(float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
 
@@ -398,7 +398,7 @@ void matmul_forward4(float* out,
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
     if (thread_id < 32) {
-        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id]);
+        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[out_row + 4 * thread_id]);
     }
 
     __syncthreads();
@@ -946,6 +946,15 @@ void residual_forward(float* out, float* inp1, float* inp2, int N) {
     cudaCheck(cudaGetLastError());
 }
 
+
+void fused_matmul_forward_gelu(float* out,
+                     float* inp, float* weight, float* bias,
+                     int B, int T, int C, int OC){
+    dim3 blockDim(256);
+    dim3 gridDim(OC / TILE_WIDTH, B * T / TILE_WIDTH);
+    fused_matmul_forward_gelu_kernel<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
+}
+
 void gelu_forward(float* out, const float* inp, int N) {
     const int block_size = 128;
     const int grid_size = CEIL_DIV(N, block_size);
@@ -1434,7 +1443,7 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         matmul_forward_cublaslt(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
-        matmul_forward4(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
+        fused_matmul_forward_gelu(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
 //        matmul_forward_cublaslt(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
 //        gelu_forward(l_fch_gelu, l_fch, B*T*4*C);
         matmul_forward_cublaslt(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4*C, C);
