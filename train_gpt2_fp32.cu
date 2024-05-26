@@ -411,6 +411,10 @@ void fused_matmul_forward_gelu_kernel(float* out,
         }
     }
 
+    if (thread_id == 0 and block_idx == 0 and block_idy == 0) {
+        printf("accum is %f\n", accum[0]);
+    }
+
     FLOAT_4(reg_weight[0]) = FLOAT_4(weight(shared_weight_row_shared_inp_col, shared_weight_col_shared_inp_row));
     FLOAT_4(reg_inp[0]) = FLOAT_4(inp(shared_weight_col_shared_inp_row, shared_weight_row_shared_inp_col));
 
