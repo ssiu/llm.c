@@ -312,6 +312,7 @@ __global__ void residual_forward_kernel(float* out, float* inp1, float* inp2, in
 }
 
 #define GELU_SCALING_FACTOR sqrtf(2.0f / M_PI)
+
 __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < N) {
@@ -319,6 +320,24 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
         float cube = 0.044715f * xi * xi * xi;
         out[i] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
     }
+}
+
+#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
+__global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    float x_inp[4];
+    float x_out[4];
+    FLOAT_4(x[0]) = FLOAT_4(inp[i*4]);
+
+    for (int i = 0; i<4; i++){
+        float xi = x[i];
+        float cube = 0.044715f * xi * xi * xi;
+        x_out[i] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
+    }
+
+    FLOAT_4(out[i*4]) = FLOAT_4(x_out[0]);
+
+
 }
 
 // fused matmul-bias-gelu kernel
@@ -347,7 +366,6 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
 #define shared_inp(pointer, i,j) shared_inp[(pointer)][((i) << 7) + (j)]
 #define BLOCK_WIDTH 128
 #define TILE_WIDTH 8
-#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256,2)
 void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
@@ -478,6 +496,8 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 
     }
 
+
+    // store matmul + bias to global memory
     #pragma unroll
     for (int i=0;i<4;i++) {
         FLOAT_4(out(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
@@ -498,7 +518,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
         }
     }
 
-    // store to global memory
+    // store matmul + bias + gelu to global memory
     #pragma unroll
     for (int i=0;i<4;i++) {
         FLOAT_4(out_gelu(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
@@ -972,8 +992,10 @@ void fused_matmul_forward_gelu(float* out_gelu, float* out,
 
 void gelu_forward(float* out, const float* inp, int N) {
     const int block_size = 128;
-    const int grid_size = CEIL_DIV(N, block_size);
-    gelu_forward_kernel<<<grid_size, block_size>>>(out, inp, N);
+//    const int grid_size = CEIL_DIV(N, block_size);
+//    gelu_forward_kernel<<<grid_size, block_size>>>(out, inp, N);
+    const int grid_size = CEIL_DIV(N, block_size * 4);
+    gelu_forward_kernel2<<<grid_size, block_size>>>(out, inp, N);
     cudaCheck(cudaGetLastError());
 }
 

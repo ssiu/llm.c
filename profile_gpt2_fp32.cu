@@ -42,7 +42,6 @@ int main() {
     cublasMath_t cublas_math_mode = enable_tf32 ? CUBLAS_TF32_TENSOR_OP_MATH : CUBLAS_DEFAULT_MATH;
     cublasCheck(cublasSetMathMode(cublas_handle, cublas_math_mode));
     cudaCheck(cudaMalloc(&cublaslt_workspace, cublaslt_workspace_size));
-    
 
 
     // build the GPT-2 model from a checkpoint
