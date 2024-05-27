@@ -349,7 +349,7 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256,2)
-void fused_matmul_forward_gelu_kernel(float* out,
+void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
 
@@ -477,6 +477,15 @@ void fused_matmul_forward_gelu_kernel(float* out,
 
     }
 
+    #pragma unroll
+    for (int i=0;i<4;i++) {
+        FLOAT_4(out(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
+        FLOAT_4(out(accum_row, accum_col + i + 16)) = FLOAT_4(accum[(i + 4) * 8]);
+        FLOAT_4(out(accum_row + 32, accum_col + i)) = FLOAT_4(accum[i * 8 + 4]);
+        FLOAT_4(out(accum_row + 32, accum_col + i + 16)) = FLOAT_4(accum[(i + 4) * 8 + 4]);
+    }
+
+
     // epilogue: apply gelu
     #pragma unroll
     for (int i=0; i<8;i++){
@@ -491,10 +500,10 @@ void fused_matmul_forward_gelu_kernel(float* out,
     // store to global memory
     #pragma unroll
     for (int i=0;i<4;i++) {
-        FLOAT_4(out(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
-        FLOAT_4(out(accum_row, accum_col + i + 16)) = FLOAT_4(accum[(i + 4) * 8]);
-        FLOAT_4(out(accum_row + 32, accum_col + i)) = FLOAT_4(accum[i * 8 + 4]);
-        FLOAT_4(out(accum_row + 32, accum_col + i + 16)) = FLOAT_4(accum[(i + 4) * 8 + 4]);
+        FLOAT_4(out_gelu(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
+        FLOAT_4(out_gelu(accum_row, accum_col + i + 16)) = FLOAT_4(accum[(i + 4) * 8]);
+        FLOAT_4(out_gelu(accum_row + 32, accum_col + i)) = FLOAT_4(accum[i * 8 + 4]);
+        FLOAT_4(out_gelu(accum_row + 32, accum_col + i + 16)) = FLOAT_4(accum[(i + 4) * 8 + 4]);
     }
 
 
