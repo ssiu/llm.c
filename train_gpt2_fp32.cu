@@ -482,7 +482,9 @@ void fused_matmul_forward_gelu_kernel(float* out,
     for (int i=0; i<8;i++){
         #pragma unroll
         for (int j=0; j<8; j++) {
-            accum[i+8*j] = 0.5f * accum[i+8*j] * (1.0f + tanhf(GELU_SCALING_FACTOR * (accum[i+8*j] + accum[i+8*j] * accum[i+8*j] * accum[i+8*j])));
+            float xi = accum[i+8*j];
+            float cube = 0.044715f * xi * xi * xi;
+            accum[i+8*j] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
         }
     }
 
