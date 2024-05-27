@@ -323,7 +323,7 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
 }
 
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
-__global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
+__global__ void gelu_forward_kernel2(float* out, float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     float x_inp[4];
     float x_out[4];
