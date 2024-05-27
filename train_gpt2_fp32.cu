@@ -393,7 +393,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
     weight = &weight(out_row, 0);
     inp = &inp(0, out_col);
     out = &out(out_row, out_col);
-
+    out_gelu = &out_gelu(out_row, out_col);
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
     if (thread_id < 32) {
