@@ -961,12 +961,12 @@ void residual_forward(float* out, float* inp1, float* inp2, int N) {
 }
 
 
-void fused_matmul_forward_gelu(float* out,
+void fused_matmul_forward_gelu(float* out_gelu, float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
     dim3 blockDim(256);
     dim3 gridDim(OC / 128, B * T / 128);
-    fused_matmul_forward_gelu_kernel<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
+    fused_matmul_forward_gelu_kernel<<<gridDim, blockDim>>>(out_gelu, out, inp, weight, bias, B, T, C, OC);
 }
 
 void gelu_forward(float* out, const float* inp, int N) {
