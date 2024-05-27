@@ -322,12 +322,12 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
     }
 }
 
-#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
-__global__ void gelu_forward_kernel2(float* out, float* inp, int N) {
+
+__global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     float x_inp[4];
     float x_out[4];
-    FLOAT_4(x_inp[0]) = FLOAT_4(inp[i*4]);
+    reinterpret_cast<float4*>(&x_inp[0])[0] = reinterpret_cast<const float4*>(&inp[i*4])[0];
 
     for (int i = 0; i<4; i++){
         float xi = x_inp[i];
@@ -335,7 +335,7 @@ __global__ void gelu_forward_kernel2(float* out, float* inp, int N) {
         x_out[i] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
     }
 
-    FLOAT_4(out[i*4]) = FLOAT_4(x_out[0]);
+    reinterpret_cast<float4*>(&out[i*4])[0] = reinterpret_cast<float4*>(&x_out[0])[0];
 
 
 }
@@ -361,6 +361,7 @@ __global__ void gelu_forward_kernel2(float* out, float* inp, int N) {
 #define inp(i,j) inp[(i) + C * (j)]
 #define out(i,j) out[(i) + OC * (j)]
 #define out_gelu(i,j) out_gelu[(i) + OC * (j)]
+#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 // shared memory tiles are 128 x 8 row major matrices
 #define shared_weight(pointer, i,j) shared_weight[(pointer)][((i) << 7) + (j)]
 #define shared_inp(pointer, i,j) shared_inp[(pointer)][((i) << 7) + (j)]
