@@ -341,6 +341,7 @@ __global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
 #define weight(i,j) weight[(i) * C + (j)]
 #define inp(i,j) inp[(i) + C * (j)]
 #define out(i,j) out[(i) + OC * (j)]
+#define out_gelu(i,j) out_gelu[(i) + OC * (j)]
 // shared memory tiles are 128 x 8 row major matrices
 #define shared_weight(pointer, i,j) shared_weight[(pointer)][((i) << 7) + (j)]
 #define shared_inp(pointer, i,j) shared_inp[(pointer)][((i) << 7) + (j)]
