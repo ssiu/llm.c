@@ -329,6 +329,7 @@ __global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
     float x_out[4];
     reinterpret_cast<float4*>(&x_inp[0])[0] = reinterpret_cast<const float4*>(&inp[i*4])[0];
 
+    #pragma unroll
     for (int i = 0; i<4; i++){
         float xi = x_inp[i];
         float cube = 0.044715f * xi * xi * xi;
