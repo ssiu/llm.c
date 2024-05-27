@@ -327,10 +327,10 @@ __global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     float x_inp[4];
     float x_out[4];
-    FLOAT_4(x[0]) = FLOAT_4(inp[i*4]);
+    FLOAT_4(x_inp[0]) = FLOAT_4(inp[i*4]);
 
     for (int i = 0; i<4; i++){
-        float xi = x[i];
+        float xi = x_inp[i];
         float cube = 0.044715f * xi * xi * xi;
         x_out[i] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
     }
