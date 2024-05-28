@@ -1771,7 +1771,7 @@ int main(int argc, char *argv[]) {
     const char* train_data_pattern = "dev/data/tinyshakespeare/tiny_shakespeare_train.bin";
     const char* val_data_pattern = "dev/data/tinyshakespeare/tiny_shakespeare_val.bin";
     const char* output_log_file = NULL;
-    int B = 16; // batch size
+    int B = 8; // batch size
     int T = 1024; // sequence length max
     float learning_rate = 3e-4f;
     int val_loss_every = 20; // every how many steps do we eval validation loss?
