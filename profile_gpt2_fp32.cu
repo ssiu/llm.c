@@ -48,7 +48,7 @@ int main() {
     GPT2 model;
     gpt2_build_from_checkpoint(&model, "gpt2_124M.bin");
 
-    int B = 8; // if program OOMs decrease this number, e.g. all the way down to 4 or etc
+    int B = 24; // if program OOMs decrease this number, e.g. all the way down to 4 or etc
     int T = 1024; // if even that OOMs move on to this one. keep them nice and powers of 2
     printf("batch size: %d\n", B);
     printf("sequence length: %d\n", T);
