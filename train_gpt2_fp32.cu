@@ -327,7 +327,7 @@ __global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     float x_inp[4];
     float x_out[4];
-
+    assert(N % 4 == 0);
     if (i * 4 < N) {
         reinterpret_cast<float4*>(&x_inp[0])[0] = reinterpret_cast<const float4*>(&inp[i*4])[0];
 
@@ -377,6 +377,10 @@ __global__ __launch_bounds__(256,2)
 void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
+
+    assert(B * T % 128  == 0);
+    assert(OC % 128  == 0);
+    assert(C % 8  == 0);
 
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -436,9 +440,6 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
         }
     }
 
-//    if (thread_id == 0 and block_idx == 0 and block_idy == 0) {
-//        printf("accum is %f\n", accum[0]);
-//    }
 
     FLOAT_4(reg_weight[0]) = FLOAT_4(weight(shared_weight_row_shared_inp_col, shared_weight_col_shared_inp_row));
     FLOAT_4(reg_inp[0]) = FLOAT_4(inp(shared_weight_col_shared_inp_row, shared_weight_row_shared_inp_col));
