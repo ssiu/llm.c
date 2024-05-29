@@ -327,16 +327,19 @@ __global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     float x_inp[4];
     float x_out[4];
-    reinterpret_cast<float4*>(&x_inp[0])[0] = reinterpret_cast<const float4*>(&inp[i*4])[0];
 
-    #pragma unroll
-    for (int i = 0; i<4; i++){
-        float xi = x_inp[i];
-        float cube = 0.044715f * xi * xi * xi;
-        x_out[i] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
+    if (i * 4 < N) {
+        reinterpret_cast<float4*>(&x_inp[0])[0] = reinterpret_cast<const float4*>(&inp[i*4])[0];
+
+        #pragma unroll
+        for (int i = 0; i<4; i++){
+            float xi = x_inp[i];
+            float cube = 0.044715f * xi * xi * xi;
+            x_out[i] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
+        }
+
+        reinterpret_cast<float4*>(&out[i*4])[0] = reinterpret_cast<float4*>(&x_out[0])[0];
     }
-
-    reinterpret_cast<float4*>(&out[i*4])[0] = reinterpret_cast<float4*>(&x_out[0])[0];
 
 
 }
@@ -352,6 +355,7 @@ __global__ void gelu_forward_kernel2(float* out, const float* inp, int N) {
 // - 256 threads per block, each using <= 128 registers -> 2 blocks per SM
 // - 128 x 8 shared memory tiles
 // - each thread computes a 8x8x1 outer product
+//
 // total shared memory usage = 128 x 8 x 4 (weight tile) + 128 x 8 x 4 (inp tile) + 128 * 4 (bias) = 4.5MB. This should be fine for most GPU
 //
 // assumptions
