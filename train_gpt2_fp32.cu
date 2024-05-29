@@ -313,7 +313,7 @@ __global__ void residual_forward_kernel(float* out, float* inp1, float* inp2, in
 
 #define GELU_SCALING_FACTOR sqrtf(2.0f / M_PI)
 
-__global__ void gelu_forward_kernel(float* out, const float* inp, int N) {
+__global__ void gelu_forward_kernel1(float* out, const float* inp, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < N) {
         float xi = inp[i];
@@ -495,7 +495,6 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 
             pointer ^= 1;
         }
-
     }
 
 
@@ -997,7 +996,7 @@ void gelu_forward(float* out, const float* inp, int N) {
 //    const int grid_size = CEIL_DIV(N, block_size);
 //    gelu_forward_kernel<<<grid_size, block_size>>>(out, inp, N);
     const int grid_size = CEIL_DIV(N, block_size * 4);
-    gelu_forward_kernel2<<<grid_size, block_size>>>(out, inp, N);
+    gelu_forward_kernel1<<<grid_size, block_size>>>(out, inp, N);
     cudaCheck(cudaGetLastError());
 }
 
