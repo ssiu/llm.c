@@ -993,10 +993,10 @@ void fused_matmul_forward_gelu(float* out_gelu, float* out,
 
 void gelu_forward(float* out, const float* inp, int N) {
     const int block_size = 128;
-    const int grid_size = CEIL_DIV(N, block_size);
-    gelu_forward_kernel1<<<grid_size, block_size>>>(out, inp, N);
-//    const int grid_size = CEIL_DIV(N, block_size * 4);
-//    gelu_forward_kernel1<<<grid_size, block_size>>>(out, inp, N);
+    //const int grid_size = CEIL_DIV(N, block_size);
+    //gelu_forward_kernel1<<<grid_size, block_size>>>(out, inp, N);
+    const int grid_size = CEIL_DIV(N, block_size * 4);
+    gelu_forward_kernel2<<<grid_size, block_size>>>(out, inp, N);
     cudaCheck(cudaGetLastError());
 }
 
