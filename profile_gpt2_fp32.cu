@@ -36,7 +36,7 @@ int main() {
     // setup cuBLAS and cuBLASLt
     cublasCheck(cublasCreate(&cublas_handle));
     cublasCheck(cublasLtCreate(&cublaslt_handle));
-    TF32 precision is equivalent to torch.set_float32_matmul_precision('high')
+    //TF32 precision is equivalent to torch.set_float32_matmul_precision('high')
     int enable_tf32 = deviceProp.major >= 8 ? 1 : 0;
     cublas_compute_type = enable_tf32 ? CUBLAS_COMPUTE_32F_FAST_TF32 : CUBLAS_COMPUTE_32F;
     cublasMath_t cublas_math_mode = enable_tf32 ? CUBLAS_TF32_TENSOR_OP_MATH : CUBLAS_DEFAULT_MATH;
