@@ -716,7 +716,7 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 
 // we use launch bounds to indicate 256 threads per block at compile time
 __global__ __launch_bounds__(256)
-void matmul_forward4(float* out,
+void matmul_forward_kernel5(float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
 
