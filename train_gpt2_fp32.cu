@@ -717,7 +717,7 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 
 __global__ __launch_bounds__(256,2)
 void matmul_forward_kernel5(float* out,
-                     float* inp, float* weight, float* bias,
+                     const float* inp, const float* weight, const float* bias,
                      int B, int T, int C, int OC){
 
     assert(B * T % 128  == 0);
