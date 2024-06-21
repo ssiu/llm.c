@@ -707,7 +707,6 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define weight(i,j) weight[(i) * C + (j)]
 #define inp(i,j) inp[(i) + C * (j)]
 #define out(i,j) out[(i) + OC * (j)]
-#define out_gelu(i,j) out_gelu[(i) + OC * (j)]
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 // shared memory tiles are 128 x 8 row major matrices
 #define shared_weight(pointer, i,j) shared_weight[(pointer)][((i) << 7) + (j)]
@@ -904,6 +903,7 @@ void matmul_forward(float* out,
     dim3 blockDim(256);
     dim3 gridDim(OC / 128, B * T / 128);
     matmul_forward_kernel5<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
+    cudaCheck(cudaGetLastError());
 }
 
 void attention_forward(float* out, float* qkvr, float* att,
