@@ -764,7 +764,6 @@ void matmul_forward_kernel5(float* out,
     weight = &weight(out_row, 0);
     inp = &inp(0, out_col);
     out = &out(out_row, out_col);
-    out_gelu = &out_gelu(out_row, out_col);
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
     if (thread_id < 32) {
@@ -904,7 +903,7 @@ void matmul_forward(float* out,
 //    cudaCheck(cudaGetLastError());
     dim3 blockDim(256);
     dim3 gridDim(OC / 128, B * T / 128);
-    matmul_forward_kernel5<<<gridDim, blockDim>>>(out_gelu, out, inp, weight, bias, B, T, C, OC);
+    matmul_forward_kernel5<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
 }
 
 void attention_forward(float* out, float* qkvr, float* att,
