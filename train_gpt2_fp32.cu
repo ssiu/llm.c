@@ -707,21 +707,18 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define weight(i,j) weight[(i) * C + (j)]
 #define inp(i,j) inp[(i) + C * (j)]
 #define out(i,j) out[(i) + OC * (j)]
-#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 // shared memory tiles are 128 x 8 row major matrices
 #define shared_weight(pointer, i,j) shared_weight[(pointer)][((i) << 7) + (j)]
 #define shared_inp(pointer, i,j) shared_inp[(pointer)][((i) << 7) + (j)]
 #define BLOCK_WIDTH 128
 #define TILE_WIDTH 8
+#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
-__global__ __launch_bounds__(256,2)
-void matmul_forward_kernel5(float* out,
+// we use launch bounds to indicate 256 threads per block at compile time
+__global__ __launch_bounds__(256)
+void matmul_forward4(float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
-
-    assert(B * T % 128  == 0);
-    assert(OC % 128  == 0);
-    assert(C % 8  == 0);
 
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -763,10 +760,11 @@ void matmul_forward_kernel5(float* out,
     weight = &weight(out_row, 0);
     inp = &inp(0, out_col);
     out = &out(out_row, out_col);
+
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
     if (thread_id < 32) {
-        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[out_row + 4 * thread_id]);
+        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id]);
     }
 
     __syncthreads();
@@ -779,7 +777,6 @@ void matmul_forward_kernel5(float* out,
             accum[i + 4 + 8 * j] = shared_bias[accum_row + 32 + i];
         }
     }
-
 
     FLOAT_4(reg_weight[0]) = FLOAT_4(weight(shared_weight_row_shared_inp_col, shared_weight_col_shared_inp_row));
     FLOAT_4(reg_inp[0]) = FLOAT_4(inp(shared_weight_col_shared_inp_row, shared_weight_row_shared_inp_col));
@@ -843,7 +840,7 @@ void matmul_forward_kernel5(float* out,
     }
 
 
-    // store matmul + bias to global memory
+    // store to global memory
     #pragma unroll
     for (int i=0;i<4;i++) {
         FLOAT_4(out(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
