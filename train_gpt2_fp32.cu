@@ -708,7 +708,7 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define inp(i,j) inp[(i) + C * (j)]
 #define out(i,j) out[(i) + OC * (j)]
 #define out_gelu(i,j) out_gelu[(i) + OC * (j)]
-#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
+#define FLOAT_4(pointer) reinterpret_cast<const float4*>(&(pointer))[0]
 // shared memory tiles are 128 x 8 row major matrices
 #define shared_weight(pointer, i,j) shared_weight[(pointer)][((i) << 7) + (j)]
 #define shared_inp(pointer, i,j) shared_inp[(pointer)][((i) << 7) + (j)]
