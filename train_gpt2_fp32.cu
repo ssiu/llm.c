@@ -1468,7 +1468,7 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
 
     residual = acts.residual3 + (L-1) * B * T * C; // last residual is in residual3
     layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C);
-    matmul_forward(acts.output, acts.lnf, params.wte, NULL, B, T, C, Vp);
+    matmul_forward5(acts.output, acts.lnf, params.wte, NULL, B, T, C, Vp);
 
     // also forward the cross-entropy loss function if we have the targets
     if (targets != NULL) {
