@@ -894,16 +894,16 @@ void matmul_forward(float* out,
                     int B, int T, int C, int OC) {
     // out is (B,T,OC). OC is short for "output channels", e.g. OC = 4 * C
     // inp is (B,T,C), weight is (OC, C), bias is (OC)
-    int sqrt_block_size = 16;
-
-    dim3 gridDim(CEIL_DIV(B * T, 8*sqrt_block_size), CEIL_DIV(OC, 8*sqrt_block_size));
-    dim3 blockDim(sqrt_block_size, sqrt_block_size);
-    matmul_forward_kernel4<<<gridDim, blockDim>>>(out, inp, weight, bias, C, OC);
-    cudaCheck(cudaGetLastError());
-//    dim3 blockDim(256);
-//    dim3 gridDim(OC / 128, B * T / 128);
-//    matmul_forward_kernel5<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
+//    int sqrt_block_size = 16;
+//
+//    dim3 gridDim(CEIL_DIV(B * T, 8*sqrt_block_size), CEIL_DIV(OC, 8*sqrt_block_size));
+//    dim3 blockDim(sqrt_block_size, sqrt_block_size);
+//    matmul_forward_kernel4<<<gridDim, blockDim>>>(out, inp, weight, bias, C, OC);
 //    cudaCheck(cudaGetLastError());
+    dim3 blockDim(256);
+    dim3 gridDim(OC / 128, B * T / 128);
+    matmul_forward_kernel5<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
+    cudaCheck(cudaGetLastError());
 }
 
 void attention_forward(float* out, float* qkvr, float* att,
