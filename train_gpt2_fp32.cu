@@ -715,7 +715,7 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define TILE_WIDTH 8
 
 __global__ __launch_bounds__(256,2)
-void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
+void matmul_forward_kernel5(float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
 
