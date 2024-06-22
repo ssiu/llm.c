@@ -707,18 +707,21 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define weight(i,j) weight[(i) * C + (j)]
 #define inp(i,j) inp[(i) + C * (j)]
 #define out(i,j) out[(i) + OC * (j)]
+#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 // shared memory tiles are 128 x 8 row major matrices
 #define shared_weight(pointer, i,j) shared_weight[(pointer)][((i) << 7) + (j)]
 #define shared_inp(pointer, i,j) shared_inp[(pointer)][((i) << 7) + (j)]
 #define BLOCK_WIDTH 128
 #define TILE_WIDTH 8
-#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
-// we use launch bounds to indicate 256 threads per block at compile time
-__global__ __launch_bounds__(256)
-void matmul_forward_kernel5(float* out,
+__global__ __launch_bounds__(256,2)
+void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
+
+    assert(B * T % 128  == 0);
+    assert(OC % 128  == 0);
+    assert(C % 8  == 0);
 
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -757,14 +760,13 @@ void matmul_forward_kernel5(float* out,
     weight = &weight(out_row, 0);
     inp = &inp(0, out_col);
     out = &out(out_row, out_col);
-
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
     if (bias != NULL) {
         // since bias will be reused BLOCK_TILE times, better to load into shared memory
         __shared__ float shared_bias[BLOCK_WIDTH];
         if (thread_id < 32) {
-        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id]);
+        FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[out_row + 4 * thread_id]);
         }
 
         __syncthreads();
@@ -842,7 +844,7 @@ void matmul_forward_kernel5(float* out,
     }
 
 
-    // store to global memory
+    // store matmul + bias to global memory
     #pragma unroll
     for (int i=0;i<4;i++) {
         FLOAT_4(out(accum_row, accum_col + i)) = FLOAT_4(accum[i * 8]);
@@ -1457,20 +1459,20 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
 
         // now do the forward pass
         layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C);
-        matmul_forward5(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
+        matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
         attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
-        matmul_forward5(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
+        matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
-        matmul_forward5(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
+        matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
         gelu_forward(l_fch_gelu, l_fch, B*T*4*C);
-        matmul_forward5(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4*C, C);
+        matmul_forward(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4*C, C);
         residual_forward(l_residual3, l_residual2, l_fcproj, B*T*C);
     }
 
     residual = acts.residual3 + (L-1) * B * T * C; // last residual is in residual3
     layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C);
-    matmul_forward5(acts.output, acts.lnf, params.wte, NULL, B, T, C, Vp);
+    matmul_forward(acts.output, acts.lnf, params.wte, NULL, B, T, C, Vp);
 
     // also forward the cross-entropy loss function if we have the targets
     if (targets != NULL) {
