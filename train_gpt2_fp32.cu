@@ -746,8 +746,7 @@ void matmul_forward_kernel5(float* out,
     __shared__ float shared_weight[2][TILE_WIDTH * BLOCK_WIDTH];
     __shared__ float shared_inp[2][TILE_WIDTH * BLOCK_WIDTH];
 
-    // since bias will be reused BLOCK_TILE times, better to load into shared memory
-    __shared__ float shared_bias[BLOCK_WIDTH];
+
 
     int pointer = 0;
     float reg_weight[4];
@@ -763,8 +762,12 @@ void matmul_forward_kernel5(float* out,
 
     // prologue: load bias and the first tile
     // TODO: test to see if we should compute bias in epilogue instead
-    if (thread_id < 32) {
+    if (bias != NULL) {
+        // since bias will be reused BLOCK_TILE times, better to load into shared memory
+        __shared__ float shared_bias[BLOCK_WIDTH];
+        if (thread_id < 32) {
         FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id]);
+        }
     }
 
     __syncthreads();
