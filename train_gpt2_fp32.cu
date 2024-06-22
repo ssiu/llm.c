@@ -746,8 +746,6 @@ void matmul_forward_kernel5(float* out,
     __shared__ float shared_weight[2][TILE_WIDTH * BLOCK_WIDTH];
     __shared__ float shared_inp[2][TILE_WIDTH * BLOCK_WIDTH];
 
-
-
     int pointer = 0;
     float reg_weight[4];
     float reg_inp[4];
@@ -768,18 +766,19 @@ void matmul_forward_kernel5(float* out,
         if (thread_id < 32) {
         FLOAT_4(shared_bias[4 * thread_id]) = FLOAT_4(bias[4 * thread_id]);
         }
-    }
 
-    __syncthreads();
+        __syncthreads();
 
-    #pragma unroll
-    for (int i = 0; i < 4; i++) {
         #pragma unroll
-        for (int j = 0; j < 8; j++){
-            accum[i + 8 * j] = shared_bias[accum_row + i];
-            accum[i + 4 + 8 * j] = shared_bias[accum_row + 32 + i];
+        for (int i = 0; i < 4; i++) {
+            #pragma unroll
+            for (int j = 0; j < 8; j++){
+                accum[i + 8 * j] = shared_bias[accum_row + i];
+                accum[i + 4 + 8 * j] = shared_bias[accum_row + 32 + i];
+            }
         }
     }
+
 
     FLOAT_4(reg_weight[0]) = FLOAT_4(weight(shared_weight_row_shared_inp_col, shared_weight_col_shared_inp_row));
     FLOAT_4(reg_inp[0]) = FLOAT_4(inp(shared_weight_col_shared_inp_row, shared_weight_row_shared_inp_col));
