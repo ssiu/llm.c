@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "---> HINT: try to re-run `python train_gpt2.py`\n");
         exit(EXIT_FAILURE);
     }
-    int B = state_header[2]; // batch size, e.g. 4
+    int B = 8; // batch size, e.g. 4
     int T = state_header[3]; // time / sequence length (e.g. 64, up to maxT)
     assert(0 <= T && T <= maxT);
     printf("[State]\n");
