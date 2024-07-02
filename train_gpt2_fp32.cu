@@ -1081,16 +1081,16 @@ void matmul_forward(float* out,
                     int B, int T, int C, int OC) {
 //    // out is (B,T,OC). OC is short for "output channels", e.g. OC = 4 * C
 //    // inp is (B,T,C), weight is (OC, C), bias is (OC)
-    int sqrt_block_size = 16;
-
-    dim3 gridDim(CEIL_DIV(B * T, 8*sqrt_block_size), CEIL_DIV(OC, 8*sqrt_block_size));
-    dim3 blockDim(sqrt_block_size, sqrt_block_size);
-    matmul_forward_kernel4<<<gridDim, blockDim>>>(out, inp, weight, bias, C, OC);
-    cudaCheck(cudaGetLastError());
-    cudaCheck(cudaGetLastError());
-//    dim3 blockDim(256);
-//    dim3 gridDim(OC / 128, B * T / 128);
-//    matmul_forward_kernel5<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
+//    int sqrt_block_size = 16;
+//
+//    dim3 gridDim(CEIL_DIV(B * T, 8*sqrt_block_size), CEIL_DIV(OC, 8*sqrt_block_size));
+//    dim3 blockDim(sqrt_block_size, sqrt_block_size);
+//    matmul_forward_kernel4<<<gridDim, blockDim>>>(out, inp, weight, bias, C, OC);
+//    cudaCheck(cudaGetLastError());
+//    cudaCheck(cudaGetLastError());
+    dim3 blockDim(256);
+    dim3 gridDim(OC / 128, B * T / 128);
+    matmul_forward_kernel5<<<gridDim, blockDim>>>(out, inp, weight, bias, B, T, C, OC);
 
 
 }
@@ -1638,9 +1638,9 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
-        matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
-        gelu_forward(l_fch_gelu, l_fch, B*T*4*C);
-        //fused_matmul_forward_gelu(l_fch_gelu, l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
+//        matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
+//        gelu_forward(l_fch_gelu, l_fch, B*T*4*C);
+        fused_matmul_forward_gelu(l_fch_gelu, l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
         matmul_forward(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4*C, C);
         residual_forward(l_residual3, l_residual2, l_fcproj, B*T*C);
     }
