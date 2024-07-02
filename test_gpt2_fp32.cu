@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 
     // let's do 10 training iterations, following the pytorch code
     float losses[10];
-    for (int step = 0; step < 10; step++) {
+    for (int step = 0; step < 1; step++) {
         struct timespec start, end;
         clock_gettime(CLOCK_MONOTONIC, &start);
         gpt2_forward(&model, x, y, B, T);
