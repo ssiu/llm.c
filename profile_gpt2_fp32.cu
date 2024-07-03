@@ -42,7 +42,7 @@ int main() {
     cublas_compute_type = enable_tf32 ? CUBLAS_COMPUTE_32F_FAST_TF32 : CUBLAS_COMPUTE_32F;
     cublasMath_t cublas_math_mode = enable_tf32 ? CUBLAS_TF32_TENSOR_OP_MATH : CUBLAS_DEFAULT_MATH;
     cublasCheck(cublasSetMathMode(cublas_handle, cublas_math_mode));
-    cudaCheck(cudaMalloc(&cublaslt_workspace, cublaslt_workspace_size));
+//    cudaCheck(cudaMalloc(&cublaslt_workspace, cublaslt_workspace_size));
 
 
     // build the GPT-2 model from a checkpoint
@@ -76,6 +76,6 @@ int main() {
     gpt2_free(&model);
     cudaCheck(cudaFree(cublaslt_workspace));
     cublasCheck(cublasDestroy(cublas_handle));
-    cublasCheck(cublasLtDestroy(cublaslt_handle));
+//    cublasCheck(cublasLtDestroy(cublaslt_handle));
     return 0;
 }
