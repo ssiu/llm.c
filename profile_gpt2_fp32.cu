@@ -23,6 +23,7 @@ You can open this up in NVIDIA Nsight Compute UI.
 For example, I have NVIDIA Nsight Compute installed on my Mac, and I rsync
 the profile.ncu-rep from a cloud box to local to pretty view.
 */
+#include <cublasLt.h>
 
 #define TESTING
 #include "train_gpt2_fp32.cu"
