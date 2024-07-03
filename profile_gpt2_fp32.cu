@@ -74,7 +74,7 @@ int main() {
     // free
 
     gpt2_free(&model);
-    cudaCheck(cudaFree(cublaslt_workspace));
+//    cudaCheck(cudaFree(cublaslt_workspace));
     cublasCheck(cublasDestroy(cublas_handle));
 //    cublasCheck(cublasLtDestroy(cublaslt_handle));
     return 0;
