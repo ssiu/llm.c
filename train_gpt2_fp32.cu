@@ -529,16 +529,16 @@ __global__ void adamw_kernel3(float* params_memory, float* grads_memory, float* 
         FLOAT_4(params[0]) = FLOAT_4(params_memory[i*4]);
 
         #pragma unroll
-        for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
             // update the first moment (momentum)
-            m[i] = lerp(grad[i], m[i], beta1);
+            m[j] = lerp(grad[j], m[j], beta1);
 
             // update the second moment (RMSprop)
-            v[i] = lerp(grad[i] * grad[i], v[i], beta2);
+            v[j] = lerp(grad[j] * grad[j], v[j], beta2);
 
-            m[i] /= beta1_correction;  // m_hat
-            v[i] /= beta2_correction;  // v_hat
-            params[i] -= learning_rate * (m[i] / (sqrtf(v[i]) + eps) + weight_decay * params[i]);
+            m[j] /= beta1_correction;  // m_hat
+            v[j] /= beta2_correction;  // v_hat
+            params[j] -= learning_rate * (m[j] / (sqrtf(v[j]) + eps) + weight_decay * params[j]);
         }
 
         FLOAT_4(m_memory[i*4]) = FLOAT_4(m[0]);
