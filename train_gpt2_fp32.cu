@@ -512,6 +512,64 @@ __global__ void adamw_kernel2(float* params_memory, float* grads_memory, float* 
    params_memory[i] -= learning_rate * (m / (sqrtf(v) + eps) + weight_decay * params_memory[i]);
 }
 
+
+#define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
+__global__ void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
+                              float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i * 4 + 3 < num_parameters ) {
+        float grad[4];
+        float m[4];
+        float v[4];
+        float params[4];
+
+        FLOAT_4(grad[0]) = FLOAT_4(grads_memory[i*4]);
+        FLOAT_4(m[0]) = FLOAT_4(m_memory[i*4]);
+        FLOAT_4(v[0]) = FLOAT_4(v_memory[i*4]);
+        FLOAT_4(params[0]) = FLOAT_4(params_memory[i*4]);
+
+        #pragma unroll
+        for (int i=0; i<4; i++) {
+            // update the first moment (momentum)
+            m[i] = lerp(grad[i], m[i], beta1);
+
+            // update the second moment (RMSprop)
+            v[i] = lerp(grad[i] * grad[i], v[i], beta2);
+
+            m[i] /= beta1_correction;  // m_hat
+            v[i] /= beta2_correction;  // v_hat
+            params[i] -= learning_rate * (m[i] / (sqrtf(v[i]) + eps) + weight_decay * params[i]);
+        }
+
+        FLOAT_4(m_memory[i*4]) = FLOAT_4(m[0]);
+        FLOAT_4(v_memory[i*4]) = FLOAT_4(v[0]);
+        FLOAT_4(params_memory[i*4]) = FLOAT_4(params[0]);
+
+    } else if (i * 4 >= num_parameters) {
+        return;
+    } else {
+        for (int j=i; j< i+4; j++) {
+            if (j >= num_parameters) {
+                continue;
+            }
+            float grad = grads_memory[j];
+            float m = m_memory[j];
+            float v = v_memory[j];
+            // update the first moment (momentum)
+            m = lerp(grad, m, beta1);
+            m_memory[j] = m;
+            // update the second moment (RMSprop)
+            v = lerp(grad * grad, v, beta2);
+            v_memory[j] = v;
+            m /= beta1_correction;  // m_hat
+            v /= beta2_correction;  // v_hat
+            params_memory[j] -= learning_rate * (m / (sqrtf(v) + eps) + weight_decay * params_memory[j]);
+        }
+    }
+}
+
+
+
 struct SoftmaxParams {
     float Scale;
     float Offset;
@@ -1812,13 +1870,23 @@ void gpt2_update(GPT2 *model, float learning_rate, float beta1, float beta2, flo
         printf("allocated %zu MiB for AdamW optimizer state v\n", (model->num_parameters * sizeof(float)) >> 20);
     }
 
-    int block_size = 512;
+//    int block_size = 512;
+//    int num_blocks = CEIL_DIV(model->num_parameters, block_size);
+//    float beta1_correction = 1.0f - powf(beta1, t);
+//    float beta2_correction = 1.0f - powf(beta2, t);
+//    adamw_kernel2<<<num_blocks, block_size>>>(model->params_memory, model->grads_memory, model->m_memory, model->v_memory,
+//                                              model->num_parameters,
+//                                              learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay);
+
+    int block_size = 512 * 4;
     int num_blocks = CEIL_DIV(model->num_parameters, block_size);
     float beta1_correction = 1.0f - powf(beta1, t);
     float beta2_correction = 1.0f - powf(beta2, t);
-    adamw_kernel2<<<num_blocks, block_size>>>(model->params_memory, model->grads_memory, model->m_memory, model->v_memory,
+    adamw_kernel3<<<num_blocks, block_size>>>(model->params_memory, model->grads_memory, model->m_memory, model->v_memory,
                                               model->num_parameters,
                                               learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay);
+
+
     cudaCheck(cudaGetLastError());
 }
 
