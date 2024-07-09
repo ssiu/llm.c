@@ -1878,8 +1878,8 @@ void gpt2_update(GPT2 *model, float learning_rate, float beta1, float beta2, flo
 //                                              model->num_parameters,
 //                                              learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay);
 
-    int block_size = 512 * 4;
-    int num_blocks = CEIL_DIV(model->num_parameters, block_size);
+    int block_size = 512;
+    int num_blocks = CEIL_DIV(model->num_parameters, block_size * 4);
     float beta1_correction = 1.0f - powf(beta1, t);
     float beta2_correction = 1.0f - powf(beta2, t);
     adamw_kernel3<<<num_blocks, block_size>>>(model->params_memory, model->grads_memory, model->m_memory, model->v_memory,
