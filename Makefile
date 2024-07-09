@@ -282,6 +282,9 @@ profile_gpt2cu: profile_gpt2.cu $(NVCC_CUDNN)
 profile_gpt2fp32cu: profile_gpt2_fp32.cu $(NVCC_CUDNN)
 	$(NVCC) $(NVCC_FLAGS) $(PFLAGS) -lineinfo $^ $(NVCC_LDFLAGS) $(NVCC_INCLUDES) $(NVCC_LDLIBS)  $(CUDA_OUTPUT_FILE)
 
+profile: profile_gpt2fp32cu
+    sudo ncu -f --target-processes all --set full -o $@ ./$<
+
 clean:
 	$(REMOVE_FILES) $(TARGETS)
 	$(REMOVE_BUILD_OBJECT_FILES)
