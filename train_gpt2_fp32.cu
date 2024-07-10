@@ -540,10 +540,10 @@ __device__ inline void adamw_vectorized(float* params_memory, float* grads_memor
     #pragma unroll
     for (int j=0; j<4; j++) {
         // update the first moment (momentum)
-        m[j] = lerp(grad[j], m[j], beta1);
+        m[j] = lerp(grad[j], m[j], beta[0]);
 
         // update the second moment (RMSprop)
-        v[j] = lerp(grad[j] * grad[j], v[j], beta2);
+        v[j] = lerp(grad[j] * grad[j], v[j], beta[1]);
 
         m_beta1_correction[j] = m[j] / beta1_correction;  // m_hat
         v_beta2_correction[j] = v[j] / beta2_correction;  // v_hat
