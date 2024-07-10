@@ -517,64 +517,69 @@ __global__ void adamw_kernel2(float* params_memory, float* grads_memory, float* 
 
 __device__ inline void adamw_vectorized(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
                               float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay, int i){
-        float grad[4];
-        float m[4];
-        float v[4];
-        float m_beta1_correction[4];
-        float v_beta2_correction[4];
-        float params[4];
+    float grad[4];
+    float m[4];
+    float v[4];
+    float m_beta1_correction[4];
+    float v_beta2_correction[4];
+    float params[4];
 
-        FLOAT_4(grad[0]) = FLOAT_4(grads_memory[i*4]);
-        FLOAT_4(m[0]) = FLOAT_4(m_memory[i*4]);
-        FLOAT_4(v[0]) = FLOAT_4(v_memory[i*4]);
-        FLOAT_4(params[0]) = FLOAT_4(params_memory[i*4]);
+    FLOAT_4(grad[0]) = FLOAT_4(grads_memory[i*4]);
+    FLOAT_4(m[0]) = FLOAT_4(m_memory[i*4]);
+    FLOAT_4(v[0]) = FLOAT_4(v_memory[i*4]);
+    FLOAT_4(params[0]) = FLOAT_4(params_memory[i*4]);
 
-        #pragma unroll
-        for (int j=0; j<4; j++) {
-            // update the first moment (momentum)
-            m[j] = lerp(grad[j], m[j], beta1);
+    #pragma unroll
+    for (int j=0; j<4; j++) {
+        // update the first moment (momentum)
+        m[j] = lerp(grad[j], m[j], beta1);
 
-            // update the second moment (RMSprop)
-            v[j] = lerp(grad[j] * grad[j], v[j], beta2);
+        // update the second moment (RMSprop)
+        v[j] = lerp(grad[j] * grad[j], v[j], beta2);
 
-            m_beta1_correction[j] = m[j] / beta1_correction;  // m_hat
-            v_beta2_correction[j] = v[j] / beta2_correction;  // v_hat
+        m_beta1_correction[j] = m[j] / beta1_correction;  // m_hat
+        v_beta2_correction[j] = v[j] / beta2_correction;  // v_hat
 
-            params[j] -= learning_rate * (m_beta1_correction[j] / (sqrtf(v_beta2_correction[j]) + eps) + weight_decay * params[j]);
-        }
+        params[j] -= learning_rate * (m_beta1_correction[j] / (sqrtf(v_beta2_correction[j]) + eps) + weight_decay * params[j]);
+    }
 
-        FLOAT_4(m_memory[i*4]) = FLOAT_4(m[0]);
-        FLOAT_4(v_memory[i*4]) = FLOAT_4(v[0]);
-        FLOAT_4(params_memory[i*4]) = FLOAT_4(params[0]);
+    FLOAT_4(m_memory[i*4]) = FLOAT_4(m[0]);
+    FLOAT_4(v_memory[i*4]) = FLOAT_4(v[0]);
+    FLOAT_4(params_memory[i*4]) = FLOAT_4(params[0]);
 }
 
+__device__ inline void adamw_non_vectorized(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
+                              float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay, int i){
+    for (int j=i; j< i+4; j++) {
+        if (j >= num_parameters) {
+            continue;
+        }
+        float grad = grads_memory[j];
+        float m = m_memory[j];
+        float v = v_memory[j];
+        // update the first moment (momentum)
+        m = lerp(grad, m, beta1);
+        m_memory[j] = m;
+        // update the second moment (RMSprop)
+        v = lerp(grad * grad, v, beta2);
+        v_memory[j] = v;
+        m /= beta1_correction;  // m_hat
+        v /= beta2_correction;  // v_hat
+        params_memory[j] -= learning_rate * (m / (sqrtf(v) + eps) + weight_decay * params_memory[j]);
+    }
+}
 
 __global__ __launch_bounds__(128)
 void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
                               float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+    __shared__ float s[16 * 1024 / 4];
     if (i * 4 + 3 < num_parameters ) {
         adamw_vectorized(params_memory, grads_memory, m_memory, v_memory, num_parameters, learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay, i);
     } else if (i * 4 >= num_parameters) {
         return;
     } else {
-        for (int j=i; j< i+4; j++) {
-            if (j >= num_parameters) {
-                continue;
-            }
-            float grad = grads_memory[j];
-            float m = m_memory[j];
-            float v = v_memory[j];
-            // update the first moment (momentum)
-            m = lerp(grad, m, beta1);
-            m_memory[j] = m;
-            // update the second moment (RMSprop)
-            v = lerp(grad * grad, v, beta2);
-            v_memory[j] = v;
-            m /= beta1_correction;  // m_hat
-            v /= beta2_correction;  // v_hat
-            params_memory[j] -= learning_rate * (m / (sqrtf(v) + eps) + weight_decay * params_memory[j]);
-        }
+        adamw_non_vectorized(params_memory, grads_memory, m_memory, v_memory, num_parameters, learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay, i);
     }
 }
 
