@@ -554,7 +554,7 @@ void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, f
                               float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i * 4 + 3 < num_parameters ) {
-        adamw_vectorized(params_memory, grads_memory, m_memory, v_memory, num_parameters, learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay, i)
+        adamw_vectorized(params_memory, grads_memory, m_memory, v_memory, num_parameters, learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay, i);
     } else if (i * 4 >= num_parameters) {
         return;
     } else {
