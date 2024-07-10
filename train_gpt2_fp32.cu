@@ -514,11 +514,9 @@ __global__ void adamw_kernel2(float* params_memory, float* grads_memory, float* 
 
 
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
-__global__ __launch_bounds__(128)
-void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
-                              float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i * 4 + 3 < num_parameters ) {
+
+__device__ inline void adamw_vectorized(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
+                              float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay, int i){
         float grad[4];
         float m[4];
         float v[4];
@@ -548,7 +546,15 @@ void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, f
         FLOAT_4(m_memory[i*4]) = FLOAT_4(m[0]);
         FLOAT_4(v_memory[i*4]) = FLOAT_4(v[0]);
         FLOAT_4(params_memory[i*4]) = FLOAT_4(params[0]);
+}
 
+
+__global__ __launch_bounds__(128)
+void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
+                              float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i * 4 + 3 < num_parameters ) {
+        adamw_vectorized(params_memory, grads_memory, m_memory, v_memory, num_parameters, learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay, i)
     } else if (i * 4 >= num_parameters) {
         return;
     } else {
