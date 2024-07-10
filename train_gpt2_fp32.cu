@@ -514,7 +514,8 @@ __global__ void adamw_kernel2(float* params_memory, float* grads_memory, float* 
 
 
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
-__global__ void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
+__global__ __launch_bounds__(128)
+void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
                               float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i * 4 + 3 < num_parameters ) {
