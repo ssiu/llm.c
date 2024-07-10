@@ -524,6 +524,14 @@ __device__ inline void adamw_vectorized(float* params_memory, float* grads_memor
     float v_beta2_correction[4];
     float params[4];
 
+   __shared__ float beta[2];
+    if (threadIdx.x == 0) {
+        beta[0] = beta1;
+        beta[1] = beta2;
+    }
+
+    __syncthreads();
+
     FLOAT_4(grad[0]) = FLOAT_4(grads_memory[i*4]);
     FLOAT_4(m[0]) = FLOAT_4(m_memory[i*4]);
     FLOAT_4(v[0]) = FLOAT_4(v_memory[i*4]);
@@ -573,7 +581,6 @@ __global__ __launch_bounds__(128)
 void adamw_kernel3(float* params_memory, float* grads_memory, float* m_memory, float* v_memory, long num_parameters,
                               float learning_rate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    __shared__ float s[16 * 1024 / 4];
     if (i * 4 + 3 < num_parameters ) {
         adamw_vectorized(params_memory, grads_memory, m_memory, v_memory, num_parameters, learning_rate, beta1, beta2, beta1_correction, beta2_correction, eps, weight_decay, i);
     } else if (i * 4 >= num_parameters) {
