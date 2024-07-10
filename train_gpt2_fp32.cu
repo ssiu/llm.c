@@ -521,6 +521,8 @@ __global__ void adamw_kernel3(float* params_memory, float* grads_memory, float* 
         float grad[4];
         float m[4];
         float v[4];
+        float m_beta1_correction[4];
+        float v_beta2_correction[4];
         float params[4];
 
         FLOAT_4(grad[0]) = FLOAT_4(grads_memory[i*4]);
@@ -536,9 +538,10 @@ __global__ void adamw_kernel3(float* params_memory, float* grads_memory, float* 
             // update the second moment (RMSprop)
             v[j] = lerp(grad[j] * grad[j], v[j], beta2);
 
-            m[j] /= beta1_correction;  // m_hat
-            v[j] /= beta2_correction;  // v_hat
-            params[j] -= learning_rate * (m[j] / (sqrtf(v[j]) + eps) + weight_decay * params[j]);
+            m_beta1_correction[j] = m[j] / beta1_correction;  // m_hat
+            v_beta2_correction[j] = v[j] / beta2_correction;  // v_hat
+
+            params[j] -= learning_rate * (m_beta1_correction[j] / (sqrtf(v_beta2_correction[j]) + eps) + weight_decay * params[j]);
         }
 
         FLOAT_4(m_memory[i*4]) = FLOAT_4(m[0]);
