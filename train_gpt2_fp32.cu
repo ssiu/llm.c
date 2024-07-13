@@ -1398,7 +1398,7 @@ void matmul_backward(float* dinp, float* dweight, float* dbias,
     // backward to input, uses = in the backward pass (set the gradient)
     //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
 
-    dim3 gridDim(N / 32,N / 32);
+    dim3 gridDim(B * T / 32, C / 32);
     dim3 blockDim(TILE_WIDTH,TILE_WIDTH);
     matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
