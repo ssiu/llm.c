@@ -1122,7 +1122,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256)
-void matmul_backward_kernel1(float* A, float* B, float* C, int N){
+void matmul_backward_kernel1(float* A, float* B, float* C, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
