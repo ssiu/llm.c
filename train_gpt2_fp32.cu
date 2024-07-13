@@ -1112,7 +1112,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 
 
 #include <iostream>
-#define A(i,j) A[(i) * B * T + (j)]
+#define A(i,j) A[(i) * BT + (j)]
 #define B(i,j) B[(i) * OC + (j)]
 #define dinp(i,j) dinp[(i) * B * T + (j)]
 #define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
@@ -1122,7 +1122,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256)
-void matmul_backward_kernel1(float* A, float* B, float* dinp, int B * T, int C, int OC){
+void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -1176,7 +1176,7 @@ void matmul_backward_kernel1(float* A, float* B, float* dinp, int B * T, int C, 
     A += BLOCK_WIDTH;
     B += BLOCK_WIDTH * OC;
 
-    for (int kBlock=0; kBlock< OC /BLOCK_WIDTH; kBlock++){
+    for (int kBlock=0; kBlock< OC / BLOCK_WIDTH; kBlock++){
 
         // load from gmem A, B for next block
         if (kBlock < OC/BLOCK_WIDTH - 1) {
@@ -1202,7 +1202,7 @@ void matmul_backward_kernel1(float* A, float* B, float* dinp, int B * T, int C, 
         }
 
         // store to smem sA, sB for next block
-        if (kBlock < OC/BLOCK_WIDTH - 1) {
+        if (kBlock < OC / BLOCK_WIDTH - 1) {
 
 
             //FLOAT_4(sA[sA_sOffset]) = FLOAT_4(rA);
