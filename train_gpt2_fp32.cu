@@ -1176,7 +1176,7 @@ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int
     A += BLOCK_WIDTH;
     B += BLOCK_WIDTH * OC;
 
-    for (int kBlock=0; kBlock<N/BLOCK_WIDTH; kBlock++){
+    for (int kBlock=0; kBlock< OC /BLOCK_WIDTH; kBlock++){
 
         // load from gmem A, B for next block
         if (kBlock < N/BLOCK_WIDTH - 1) {
@@ -1379,10 +1379,10 @@ void matmul_backward(float* dinp, float* dweight, float* dbias,
     float one = 1.0f;
     float zero = 0.0f;
     // backward to input, uses = in the backward pass (set the gradient)
-    cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
+    //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
 
-    int TILE_WIDTH = 128;
-    dim3 gridDim(C / TILE_WIDTH, B * T / TILE_WIDTH);
+    //int TILE_WIDTH = 128;
+    dim3 gridDim(C / 128, B * T / 128);
     dim3 blockDim(256);
     matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
