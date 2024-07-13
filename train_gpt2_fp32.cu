@@ -1114,7 +1114,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 #include <iostream>
 #define A(i,j) A[(i) * BT + (j)]
 #define B(i,j) B[(i) * OC + (j)]
-#define dinp(i,j) dinp[(i) * B * T + (j)]
+#define dinp(i,j) dinp[(i) * BT + (j)]
 #define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
 #define TILE_WIDTH 128
