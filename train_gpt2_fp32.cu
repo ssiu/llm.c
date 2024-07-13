@@ -1217,7 +1217,7 @@ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int
             __syncthreads();
 
             A += BLOCK_WIDTH;
-            B += BLOCK_WIDTH * N;
+            B += BLOCK_WIDTH * OC;
 
             shared_pointer ^= 1;
         }
