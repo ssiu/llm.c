@@ -1114,7 +1114,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 #include <iostream>
 #define A(i,j) A[(i) * C + (j)]
 #define B(i,j) B[(i) * OC + (j)]
-#define C(i,j) C[(i) * C + (j)]
+#define dinp(i,j) dinp[(i) * C + (j)]
 #define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
 #define TILE_WIDTH 128
@@ -1122,7 +1122,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256)
-void matmul_backward_kernel1(float* A, float* B, float* C, int BT, int C, int OC){
+void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -1145,7 +1145,7 @@ void matmul_backward_kernel1(float* A, float* B, float* C, int BT, int C, int OC
 
     A = &A((block_idx << 7), 0);
     B = &B(0, (block_idy << 7));
-    C = &C((block_idx << 7), (block_idy << 7));
+    dinp = &dinp((block_idx << 7), (block_idy << 7));
 
     __shared__ float sA[2][BLOCK_WIDTH * TILE_WIDTH];
     __shared__ float sB[2][BLOCK_WIDTH * TILE_WIDTH];
@@ -1230,10 +1230,10 @@ void matmul_backward_kernel1(float* A, float* B, float* C, int BT, int C, int OC
     #pragma unroll
     for (int i=0;i<4;i++) {
 
-        FLOAT_4(C(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
-        FLOAT_4(C(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
-        FLOAT_4(C(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
-        FLOAT_4(C(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
 
     }
 }
