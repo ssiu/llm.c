@@ -1112,9 +1112,9 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 
 
 #include <iostream>
-#define A(i,j) A[(i) * C + (j)]
+#define A(i,j) A[(i) * B * T + (j)]
 #define B(i,j) B[(i) * OC + (j)]
-#define dinp(i,j) dinp[(i) * C + (j)]
+#define dinp(i,j) dinp[(i) * B * T + (j)]
 #define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
 #define TILE_WIDTH 128
@@ -1382,7 +1382,7 @@ void matmul_backward(float* dinp, float* dweight, float* dbias,
     //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
 
     //int TILE_WIDTH = 128;
-    dim3 gridDim(C / 128, B * T / 128);
+    dim3 gridDim(B * T / 128, C / 128);
     dim3 blockDim(256);
     matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
