@@ -1179,7 +1179,7 @@ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int
     for (int kBlock=0; kBlock< OC /BLOCK_WIDTH; kBlock++){
 
         // load from gmem A, B for next block
-        if (kBlock < N/BLOCK_WIDTH - 1) {
+        if (kBlock < OC/BLOCK_WIDTH - 1) {
             FLOAT_4(rA) = FLOAT_4(A(sA_row, sA_col));
             FLOAT_4(rB) = FLOAT_4(B(sB_row, sB_col));
         }
