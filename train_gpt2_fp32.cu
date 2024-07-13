@@ -1110,8 +1110,25 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 
 }
 
-
 #include <iostream>
+__global__ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int OC){
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int row = by*32 + ty;
+    int col = bx*32 + tx;
+    A = &A[row*OC];
+    B = &B[col];
+    float sum = 0;
+    for (int k=0; k<OC; k++) {
+        sum += A[k] * B[k*C];
+    }
+    C[row*C + col] = sum;
+
+}
+
+
 #define A(i,j) A[(i) * BT + (j)]
 #define B(i,j) B[(i) * OC + (j)]
 #define dinp(i,j) dinp[(i) * BT + (j)]
@@ -1122,7 +1139,7 @@ void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256)
-void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int OC){
+void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -1381,10 +1398,13 @@ void matmul_backward(float* dinp, float* dweight, float* dbias,
     // backward to input, uses = in the backward pass (set the gradient)
     //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
 
-    //int TILE_WIDTH = 128;
-    dim3 gridDim(B * T / 128, C / 128);
-    dim3 blockDim(256);
+    dim3 gridDim_mm_new_1(N / 32,N / 32);
+    dim3 blockDim_mm_new_1(TILE_WIDTH,TILE_WIDTH);
     matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
+
+//    dim3 gridDim(B * T / 128, C / 128);
+//    dim3 blockDim(256);
+//    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
     cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_T, C, OC, B*T, &one, inp, C, dout, OC, &one, dweight, C));
