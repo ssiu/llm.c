@@ -1202,7 +1202,7 @@ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT, int C, int
         }
 
         // store to smem sA, sB for next block
-        if (kBlock < N/BLOCK_WIDTH - 1) {
+        if (kBlock < OC/BLOCK_WIDTH - 1) {
 
 
             //FLOAT_4(sA[sA_sOffset]) = FLOAT_4(rA);
