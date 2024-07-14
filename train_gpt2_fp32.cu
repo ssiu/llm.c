@@ -1191,9 +1191,9 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
     __syncthreads();
 
     A += TILE_WIDTH;
-    B += TILE_WIDTH * OC;
+    B += TILE_WIDTH * C;
 
-    for (int kBlock=0; kBlock< OC / TILE_WIDTH; kBlock++){
+    for (int kBlock=0; kBlock < OC / TILE_WIDTH; kBlock++){
 
         // load from gmem A, B for next block
         if (kBlock < OC/TILE_WIDTH - 1) {
@@ -1234,7 +1234,7 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
             __syncthreads();
 
             A += TILE_WIDTH;
-            B += TILE_WIDTH * OC;
+            B += TILE_WIDTH * C;
 
             shared_pointer ^= 1;
         }
