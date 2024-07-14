@@ -1134,8 +1134,8 @@ __global__ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT,
 #define dinp(i,j) dinp[(i) * C + (j)]
 #define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
-#define TILE_WIDTH 128
-#define BLOCK_WIDTH 8
+#define BLOCK_WIDTH 128
+#define TILE_WIDTH 8
 #define FLOAT_4(pointer) reinterpret_cast<float4*>(&(pointer))[0]
 
 __global__ __launch_bounds__(256)
@@ -1164,8 +1164,8 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
     B = &B(0, (block_idy << 7));
     dinp = &dinp((block_idx << 7), (block_idy << 7));
 
-    __shared__ float sA[2][BLOCK_WIDTH * TILE_WIDTH];
-    __shared__ float sB[2][BLOCK_WIDTH * TILE_WIDTH];
+    __shared__ float sA[2][TILE_WIDTH * BLOCK_WIDTH];
+    __shared__ float sB[2][TILE_WIDTH * BLOCK_WIDTH];
 
 
     float rA[4];
@@ -1183,25 +1183,25 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
     #pragma unroll
     for (int i=0; i<4;i++){
         sA(shared_pointer, sA_col + i, sA_row) = rA[i];
-        // sA[shared_pointer][sA_sOffset + i*TILE_WIDTH] = rA[i];
+        // sA[shared_pointer][sA_sOffset + i*BLOCK_WIDTH] = rA[i];
     }
 
     FLOAT_4(sB(shared_pointer, sB_row, sB_col)) = FLOAT_4(rB);
 
     __syncthreads();
 
-    A += BLOCK_WIDTH;
-    B += BLOCK_WIDTH * OC;
+    A += TILE_WIDTH;
+    B += TILE_WIDTH * OC;
 
-    for (int kBlock=0; kBlock< OC / BLOCK_WIDTH; kBlock++){
+    for (int kBlock=0; kBlock< OC / TILE_WIDTH; kBlock++){
 
         // load from gmem A, B for next block
-        if (kBlock < OC/BLOCK_WIDTH - 1) {
+        if (kBlock < OC/TILE_WIDTH - 1) {
             FLOAT_4(rA) = FLOAT_4(A(sA_row, sA_col));
             FLOAT_4(rB) = FLOAT_4(B(sB_row, sB_col));
         }
         #pragma unroll
-        for (int kFragment=0; kFragment<BLOCK_WIDTH; kFragment++) {
+        for (int kFragment=0; kFragment<TILE_WIDTH; kFragment++) {
             // load from smem A, B
             FLOAT_4(fA[0]) = FLOAT_4(sA(shared_pointer, kFragment, C_row));
             FLOAT_4(fA[4]) = FLOAT_4(sA(shared_pointer, kFragment, C_row + 16));
@@ -1219,22 +1219,22 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
         }
 
         // store to smem sA, sB for next block
-        if (kBlock < OC / BLOCK_WIDTH - 1) {
+        if (kBlock < OC / TILE_WIDTH - 1) {
 
 
             //FLOAT_4(sA[sA_sOffset]) = FLOAT_4(rA);
             #pragma unroll
             for (int i=0; i<4;i++){
                 sA(shared_pointer^1, sA_col + i, sA_row) = rA[i];
-                //sA[shared_pointer^1][sA_sOffset + i*TILE_WIDTH] = rA[i];
+                //sA[shared_pointer^1][sA_sOffset + i*BLOCK_WIDTH] = rA[i];
             }
 
             FLOAT_4(sB(shared_pointer^1, sB_row, sB_col)) = FLOAT_4(rB);
 
             __syncthreads();
 
-            A += BLOCK_WIDTH;
-            B += BLOCK_WIDTH * OC;
+            A += TILE_WIDTH;
+            B += TILE_WIDTH * OC;
 
             shared_pointer ^= 1;
         }
