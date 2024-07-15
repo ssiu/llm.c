@@ -948,7 +948,7 @@ void matmul_forward_kernel5(float* out,
 #define TILE_WIDTH 8
 
 __global__ __launch_bounds__(256,2)
-void fused_matmul_forward_gelu_kernel(float* out_gelu, float* out,
+void fused_matmul_gelu_forward_kernel(float* out_gelu, float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
 
@@ -1255,18 +1255,188 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
     }
 }
 
+__device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
+   for (int i=0;i<4;i ++ ){
+        float x = inp[i];
+        float cube = 0.044715f * x * x * x;
+        float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+        float tanh_out = tanhf(tanh_arg);
+        float coshf_out = coshf(tanh_arg);
+        float sech_out = 1.0f / (coshf_out * coshf_out);
+        float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+        dinp[i] = local_grad * dinp[i];
+    }
+}
+
+__global__ __launch_bounds__(256)
+void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, int BT, int C, int OC){
+    int thread_id = threadIdx.x;
+    int block_idx = blockIdx.x;
+    int block_idy = blockIdx.y;
+    int warp_id = threadIdx.x >> 5;
+    int lane_id = threadIdx.x & 31;
+    int warp_row = (warp_id >> 1) << 5;
+
+    int warp_col = (warp_id & 1) << 6;
+    int thread_row = (lane_id >> 3) << 2;
+    int thread_col = (lane_id & 7) << 2;
+
+    int sA_row = thread_id >> 1;
+    int sA_col = (thread_id & 1) << 2;
+
+    int sB_row = thread_id >> 5;
+    int sB_col = (thread_id & 31) << 2;
+
+    int C_row = warp_row + thread_row;
+    int C_col = warp_col + thread_col;
+
+    A = &A((block_idx << 7), 0);
+    B = &B(0, (block_idy << 7));
+    dinp = &dinp((block_idx << 7), (block_idy << 7));
+
+    __shared__ float sA[2][TILE_WIDTH * BLOCK_WIDTH];
+    __shared__ float sB[2][TILE_WIDTH * BLOCK_WIDTH];
+
+
+    float rA[4];
+    float rB[4];
+
+    float fA[8] = {};
+    float fB[8] = {};
+
+    float accum[64] = {};
+
+    int shared_pointer = 0;
+    // load first block
+    FLOAT_4(rA) = FLOAT_4(A(sA_row, sA_col));
+    FLOAT_4(rB) = FLOAT_4(B(sB_row, sB_col));
+    #pragma unroll
+    for (int i=0; i<4;i++){
+        sA(shared_pointer, sA_col + i, sA_row) = rA[i];
+        // sA[shared_pointer][sA_sOffset + i*BLOCK_WIDTH] = rA[i];
+    }
+
+    FLOAT_4(sB(shared_pointer, sB_row, sB_col)) = FLOAT_4(rB);
+
+    __syncthreads();
+
+    A += TILE_WIDTH;
+    B += TILE_WIDTH * C;
+
+    for (int kBlock=0; kBlock < OC / TILE_WIDTH; kBlock++){
+
+        // load from gmem A, B for next block
+        if (kBlock < OC/TILE_WIDTH - 1) {
+            FLOAT_4(rA) = FLOAT_4(A(sA_row, sA_col));
+            FLOAT_4(rB) = FLOAT_4(B(sB_row, sB_col));
+        }
+        #pragma unroll
+        for (int kFragment=0; kFragment<TILE_WIDTH; kFragment++) {
+            // load from smem A, B
+            FLOAT_4(fA[0]) = FLOAT_4(sA(shared_pointer, kFragment, C_row));
+            FLOAT_4(fA[4]) = FLOAT_4(sA(shared_pointer, kFragment, C_row + 16));
+            FLOAT_4(fB[0]) = FLOAT_4(sB(shared_pointer, kFragment, C_col));
+            FLOAT_4(fB[4]) = FLOAT_4(sB(shared_pointer, kFragment, C_col + 32));
+
+            // compute outer product
+            #pragma unroll
+            for (int i=0; i<8;i++){
+                #pragma unroll
+                for (int j=0; j<8; j++) {
+                    accum[i*8+j] += fA[i] * fB[j];
+                }
+             }
+        }
+
+        // store to smem sA, sB for next block
+        if (kBlock < OC / TILE_WIDTH - 1) {
+
+
+            //FLOAT_4(sA[sA_sOffset]) = FLOAT_4(rA);
+            #pragma unroll
+            for (int i=0; i<4;i++){
+                sA(shared_pointer^1, sA_col + i, sA_row) = rA[i];
+                //sA[shared_pointer^1][sA_sOffset + i*BLOCK_WIDTH] = rA[i];
+            }
+
+            FLOAT_4(sB(shared_pointer^1, sB_row, sB_col)) = FLOAT_4(rB);
+
+            __syncthreads();
+
+            A += TILE_WIDTH;
+            B += TILE_WIDTH * C;
+
+            shared_pointer ^= 1;
+        }
+
+    }
+
+    // load inp
+    float reg_inp[64] = {};
+
+    #pragma unroll
+    for (int i=0;i<4;i++) {
+        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
+        FLOAT_4(reg_inp[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
+        FLOAT_4(reg_inp[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
+        FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
+        epilogue_gelu_backward(&accum[i * 8], &reg_inp[i * 8]);
+        epilogue_gelu_backward(&accum[i * 8 + 4], &reg_inp[i * 8 + 4]);
+        epilogue_gelu_backward(&accum[(i + 4) * 8], &reg_inp[i * 8]);
+        epilogue_gelu_backward(&accum[(i + 4) * 8 + 4], &reg_inp[i * 8]);
+    }
+
+//    storeToGmem_5(accum, C, N, C_gOffset);
+
+    // store to gmem C
+    #pragma unroll
+    for (int i=0;i<4;i++) {
+        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+    }
+}
+
 // ----------------------------------------------------------------------------
 // kernel launchers
 
 
-void fused_matmul_forward_gelu(float* out_gelu, float* out,
+void fused_matmul_gelu_forward(float* out_gelu, float* out,
                      float* inp, float* weight, float* bias,
                      int B, int T, int C, int OC){
     dim3 blockDim(256);
     dim3 gridDim(OC / 128, B * T / 128);
-    fused_matmul_forward_gelu_kernel<<<gridDim, blockDim>>>(out_gelu, out, inp, weight, bias, B, T, C, OC);
+    fused_matmul_gelu_forward_kernel<<<gridDim, blockDim>>>(out_gelu, out, inp, weight, bias, B, T, C, OC);
 }
 
+
+void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
+                     float* dout, float* inp, float* weight,
+                     int B, int T, int C, int OC) {
+    float one = 1.0f;
+    float zero = 0.0f;
+    // backward to input, uses = in the backward pass (set the gradient)
+    //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
+
+//    dim3 gridDim(C / 32, B * T / 32);
+//    dim3 blockDim(32, 32);
+//    matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
+
+    dim3 gridDim(c / 128, B * T / 128);
+    dim3 blockDim(256);
+    fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
+
+    // backward to weight, uses += in the backward pass (accumulate the gradient)
+    cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_T, C, OC, B*T, &one, inp, C, dout, OC, &one, dweight, C));
+    // backward to bias, if given, does a +=
+    if (dbias != NULL) {
+        const int block_size = 1024;
+        const int grid_size = OC / 32; // for now, OC must be divisible by 32 for this kernel to work
+        matmul_backward_bias_kernel4<<<grid_size, block_size, block_size * sizeof(float)>>>(dbias, dout, B, T, OC);
+        cudaCheck(cudaGetLastError());
+    }
+}
 
 void encoder_forward(float* out,
                      const int* inp, const float* wte, const float* wpe,
@@ -1396,15 +1566,7 @@ void matmul_backward(float* dinp, float* dweight, float* dbias,
     float one = 1.0f;
     float zero = 0.0f;
     // backward to input, uses = in the backward pass (set the gradient)
-    //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
-
-//    dim3 gridDim(C / 32, B * T / 32);
-//    dim3 blockDim(32, 32);
-//    matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
-
-    dim3 gridDim(B * T / 128, C / 128);
-    dim3 blockDim(256);
-    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
+    cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
     cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_T, C, OC, B*T, &one, inp, C, dout, OC, &one, dweight, C));
@@ -1875,7 +2037,7 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
         matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
         gelu_forward(l_fch_gelu, l_fch, B*T*4*C);
-//        fused_matmul_forward_gelu(l_fch_gelu, l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
+//        fused_matmul_gelu_forward(l_fch_gelu, l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
         matmul_forward(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4*C, C);
         residual_forward(l_residual3, l_residual2, l_fcproj, B*T*C);
     }
@@ -2014,8 +2176,9 @@ void gpt2_backward(GPT2 *model) {
         float* scratch = acts.output;
 
         // backprop this layer
-        matmul_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
-        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
+//        matmul_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
+//        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
+        fused_matmul_gelu_backward_kernel(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
         matmul_backward(dl_btc, dl_fcw, dl_fcb, dl_bt4c, l_ln2, l_fcw, B, T, C, 4 * C);
         // layernorm backward does += to the dresidual, so it correctly accumulates grad from the MLP block above
         layernorm_backward(dresidual, dl_ln2w, dl_ln2b, dl_btc, l_residual2, l_ln2w, l_ln2_mean, l_ln2_rstd, B, T, C);
