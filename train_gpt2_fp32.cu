@@ -1425,13 +1425,13 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
 //    matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
 
+//    dim3 gridDim(B * T / 128, C / 128);
+//    dim3 blockDim(256);
+//    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
+
     dim3 gridDim(B * T / 128, C / 128);
     dim3 blockDim(256);
-    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
-
-//    dim3 gridDim(C / 128, B * T / 128);
-//    dim3 blockDim(256);
-//    fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
+    fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
     cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_T, C, OC, B*T, &one, inp, C, dout, OC, &one, dweight, C));
@@ -2184,7 +2184,7 @@ void gpt2_backward(GPT2 *model) {
         // backprop this layer
         fused_matmul_gelu_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
 //        matmul_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
-        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
+//        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
 
         matmul_backward(dl_btc, dl_fcw, dl_fcb, dl_bt4c, l_ln2, l_fcw, B, T, C, 4 * C);
         // layernorm backward does += to the dresidual, so it correctly accumulates grad from the MLP block above
