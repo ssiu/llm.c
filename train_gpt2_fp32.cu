@@ -1431,8 +1431,9 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 //            dinp(C_row + i + 16, C_col + j + 32) = accum[(i + 4) * 8 + 4 +j];
 //        }
 //    }
-
+    #pragma unroll
     for (int i=0;i<4;i++) {
+        #pragma unroll
         for (int j = 0;j<4;j++) {
             epilogue_gelu_backward(&accum[i * 8 + j], inp(C_row + i, C_col + j));
             epilogue_gelu_backward(&accum[i * 8 + 4 + j], inp(C_row + i, C_col + j + 32));
