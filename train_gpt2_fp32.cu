@@ -1413,7 +1413,7 @@ void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* i
     for (int i=0;i<8;i++) {
         for (int j=0; j<2; j++) {
             FLOAT_4(reg_inp[0]) = FLOAT_4(inp(C_row + i + 16 * (i / 4), C_col + 32 * (j % 2)));
-            for (k=0;k<4;k++) {
+            for (int k=0;k<4;k++) {
                 epilogue_gelu_backward(accum[(i + (i/4)) * 8 + (j % 2) * 4 + k], reg_inp[k] );
             }
         }
