@@ -1391,13 +1391,13 @@ void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* i
 //    storeToGmem_5(accum, C, N, C_gOffset);
 
     // store to gmem C
-    #pragma unroll
-    for (int i=0;i<4;i++) {
-        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
-        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
-        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
-        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
-    }
+//    #pragma unroll
+//    for (int i=0;i<4;i++) {
+//        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+//        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+//        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+//        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+//    }
 }
 
 // ----------------------------------------------------------------------------
