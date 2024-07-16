@@ -1383,8 +1383,8 @@ void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* i
         FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
         epilogue_gelu_backward(&accum[i * 8], &reg_inp[i * 8]);
         epilogue_gelu_backward(&accum[i * 8 + 4], &reg_inp[i * 8 + 4]);
-        epilogue_gelu_backward(&accum[(i + 4) * 8], &reg_inp[i * 8]);
-        epilogue_gelu_backward(&accum[(i + 4) * 8 + 4], &reg_inp[i * 8]);
+        epilogue_gelu_backward(&accum[(i + 4) * 8], &reg_inp[(i + 4) * 8]);
+        epilogue_gelu_backward(&accum[(i + 4) * 8 + 4], &reg_inp[(i + 4) * 8 + 4]);
     }
 
 //    storeToGmem_5(accum, C, N, C_gOffset);
