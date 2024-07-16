@@ -1408,42 +1408,55 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 
     }
 
-    inp = &inp((block_idx << 7), (block_idy << 7));
-    float reg_inp;
-
-    for (int i=0; i< 8; i ++ ) {
-        for (int j=0; j< 8; j++){
-            if (i < 4 and j < 4) {
-                reg_inp = inp(C_row + i, C_col + j);
-            }   else if (i < 4 and j >= 4) {
-                reg_inp = inp(C_row + i, C_col + j + 32);
-            } else if (i >= 4 and j < 4) {
-                reg_inp = inp(C_row + i + 16, C_col + j);
-            } else if (i >= 4 and j >= 4){
-                reg_inp = inp(C_row + i + 16, C_col + j + 32);
-            }
-            //epilogue_gelu_backward(&accum[i * 8 + j], reg_inp);
-            float x = reg_inp;
-            float cube = 0.044715f * x * x * x;
-            float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
-            float tanh_out = tanhf(tanh_arg);
-            float coshf_out = coshf(tanh_arg);
-            float sech_out = 1.0f / (coshf_out * coshf_out);
-            float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
-            accum[i*8 + j] = local_grad * accum[i*8 + j];
-        }
-
-    }
+//    inp = &inp((block_idx << 7), (block_idy << 7));
+//    float reg_inp;
+//
+//    for (int i=0; i< 8; i ++ ) {
+//        for (int j=0; j< 8; j++){
+//            if (i < 4 and j < 4) {
+//                reg_inp = inp(C_row + i, C_col + j);
+//            }   else if (i < 4 and j >= 4) {
+//                reg_inp = inp(C_row + i, C_col + j + 32);
+//            } else if (i >= 4 and j < 4) {
+//                reg_inp = inp(C_row + i + 16, C_col + j);
+//            } else if (i >= 4 and j >= 4){
+//                reg_inp = inp(C_row + i + 16, C_col + j + 32);
+//            }
+//            //epilogue_gelu_backward(&accum[i * 8 + j], reg_inp);
+//            float x = reg_inp;
+//            float cube = 0.044715f * x * x * x;
+//            float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+//            float tanh_out = tanhf(tanh_arg);
+//            float coshf_out = coshf(tanh_arg);
+//            float sech_out = 1.0f / (coshf_out * coshf_out);
+//            float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+//            accum[i*8 + j] = local_grad * accum[i*8 + j];
+//        }
+//
+//    }
 
 //    storeToGmem_5(accum, C, N, C_gOffset);
 
 //     store to gmem C
     #pragma unroll
-    for (int i=0;i<4;i++) {
-        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
-        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
-        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
-        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+//    for (int i=0;i<4;i++) {
+//        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+//        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+//        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+//        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+//    }
+    for (int i=0; i< 8; i ++ ) {
+        for (int j=0; j< 8; j++){
+            if (i < 4 and j < 4) {
+                dinp(C_row + i, C_col + j) = accum[i*8 + j];
+            }   else if (i < 4 and j >= 4) {
+                dinp(C_row + i, C_col + j + 32) = accum[i*8 + j];
+            } else if (i >= 4 and j < 4) {
+                dinp(C_row + i + 16, C_col + j) = accum[i*8 + j];
+            } else if (i >= 4 and j >= 4){
+                dinp(C_row + i + 16, C_col + j + 32) = accum[i*8 + j];
+            }
+        }
     }
 }
 
@@ -2238,7 +2251,7 @@ void gpt2_backward(GPT2 *model) {
         // backprop this layer
         fused_matmul_gelu_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, l_fch, B, T, 4*C, C);
 //        matmul_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
-//        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
+        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
         matmul_backward(dl_btc, dl_fcw, dl_fcb, dl_bt4c, l_ln2, l_fcw, B, T, C, 4 * C);
         // layernorm backward does += to the dresidual, so it correctly accumulates grad from the MLP block above
         layernorm_backward(dresidual, dl_ln2w, dl_ln2b, dl_btc, l_residual2, l_ln2w, l_ln2_mean, l_ln2_rstd, B, T, C);
