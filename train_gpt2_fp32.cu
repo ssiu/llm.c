@@ -1132,6 +1132,7 @@ __global__ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT,
 #define A(i,j) A[(i) * OC + (j)]
 #define B(i,j) B[(i) * C + (j)]
 #define dinp(i,j) dinp[(i) * C + (j)]
+#define inp(i,j) inp[(i) * C + (j)]
 #define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
 #define BLOCK_WIDTH 128
@@ -1269,7 +1270,7 @@ __device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
 }
 
 __global__ __launch_bounds__(256)
-void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, int BT, int C, int OC){
+void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -1423,7 +1424,7 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
 //    dim3 blockDim(32, 32);
 //    matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
-    dim3 gridDim(c / 128, B * T / 128);
+    dim3 gridDim(C / 128, B * T / 128);
     dim3 blockDim(256);
     fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
 
