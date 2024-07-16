@@ -1310,6 +1310,7 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
+
     int warp_id = threadIdx.x >> 5;
     int lane_id = threadIdx.x & 31;
     int warp_row = (warp_id >> 1) << 5;
@@ -1439,25 +1440,25 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 
 //     store to gmem C
     #pragma unroll
-//    for (int i=0;i<4;i++) {
-//        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
-//        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
-//        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
-//        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
-//    }
-    for (int i=0; i< 8; i ++ ) {
-        for (int j=0; j< 8; j++){
-            if (i < 4 && j < 4) {
-                dinp(C_row + i, C_col + j) = accum[i*8 + j];
-            } else if (i < 4 && j >= 4) {
-                dinp(C_row + i, C_col + j + 32) = accum[i*8 + j];
-            } else if (i >= 4 && j < 4) {
-                dinp(C_row + i + 16, C_col + j) = accum[i*8 + j];
-            } else if (i >= 4 && j >= 4){
-                dinp(C_row + i + 16, C_col + j + 32) = accum[i*8 + j];
-            }
-        }
+    for (int i=0;i<4;i++) {
+        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
     }
+//    for (int i=0; i< 8; i ++ ) {
+//        for (int j=0; j< 8; j++){
+//            if (i < 4 && j < 4) {
+//                dinp(C_row + i, C_col + j) = accum[i*8 + j];
+//            } else if (i < 4 && j >= 4) {
+//                dinp(C_row + i, C_col + j + 32) = accum[i*8 + j];
+//            } else if (i >= 4 && j < 4) {
+//                dinp(C_row + i + 16, C_col + j) = accum[i*8 + j];
+//            } else if (i >= 4 && j >= 4){
+//                dinp(C_row + i + 16, C_col + j + 32) = accum[i*8 + j];
+//            }
+//        }
+//    }
 }
 
 // ----------------------------------------------------------------------------
