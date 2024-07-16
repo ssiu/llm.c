@@ -1417,7 +1417,7 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
                 reg_inp = inp(C_row + i, C_col + j);
             }   else if (i < 4 and j >= 4) {
                 reg_inp = inp(C_row + i, C_col + j + 32);
-            } else if (i > 4 and j < 4) {
+            } else if (i >= 4 and j < 4) {
                 reg_inp = inp(C_row + i + 16, C_col + j);
             } else {
                 reg_inp = inp(C_row + i + 16, C_col + j + 32);
