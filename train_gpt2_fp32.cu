@@ -1298,14 +1298,15 @@ __global__ void fused_matmul_gelu_backward_kernel1(float* A, float* B, float* di
         sum += A[k] * B[k*C];
     }
 
-    epilogue_gelu_backward(sum, inp[row*C + col]);
-//    float cube = 0.044715f * x * x * x;
-//    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
-//    float tanh_out = tanhf(tanh_arg);
-//    float coshf_out = coshf(tanh_arg);
-//    float sech_out = 1.0f / (coshf_out * coshf_out);
-//    float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
-//    sum = local_grad * sum;
+    //epilogue_gelu_backward(sum, inp[row*C + col]);
+    float x = inp;
+    float cube = 0.044715f * x * x * x;
+    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+    float tanh_out = tanhf(tanh_arg);
+    float coshf_out = coshf(tanh_arg);
+    float sech_out = 1.0f / (coshf_out * coshf_out);
+    float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+    sum = local_grad * sum;
     dinp[row*C + col] = sum;
 
 
