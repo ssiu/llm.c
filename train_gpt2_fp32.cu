@@ -1373,31 +1373,31 @@ void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* i
     }
 
     // load inp
-    float reg_inp[64] = {};
-
-    #pragma unroll
-    for (int i=0;i<4;i++) {
-        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
-        FLOAT_4(reg_inp[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
-        FLOAT_4(reg_inp[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
-        FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
-        accum[i * 8] += 1;
+//    float reg_inp[64] = {};
+//
+//    #pragma unroll
+//    for (int i=0;i<4;i++) {
+//        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
+//        FLOAT_4(reg_inp[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
+//        FLOAT_4(reg_inp[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
+//        FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
+//        accum[i * 8] += 1;
 //        epilogue_gelu_backward(&accum[i * 8], &reg_inp[i * 8]);
 //        epilogue_gelu_backward(&accum[i * 8 + 4], &reg_inp[i * 8 + 4]);
 //        epilogue_gelu_backward(&accum[(i + 4) * 8], &reg_inp[(i + 4) * 8]);
 //        epilogue_gelu_backward(&accum[(i + 4) * 8 + 4], &reg_inp[(i + 4) * 8 + 4]);
-    }
+//    }
 
 //    storeToGmem_5(accum, C, N, C_gOffset);
 
-    // store to gmem C
-//    #pragma unroll
-//    for (int i=0;i<4;i++) {
-//        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
-//        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
-//        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
-//        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
-//    }
+//     store to gmem C
+    #pragma unroll
+    for (int i=0;i<4;i++) {
+        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -2188,7 +2188,7 @@ void gpt2_backward(GPT2 *model) {
         // backprop this layer
         fused_matmul_gelu_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, l_fch, B, T, 4*C, C);
 //        matmul_backward(dl_bt4c, dl_fcprojw, dl_fcprojb, dresidual, l_fch_gelu, l_fcprojw, B, T, 4*C, C);
-//        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
+        gelu_backward(dl_bt4c, l_fch, dl_bt4c, B*T*4*C);
 
         matmul_backward(dl_btc, dl_fcw, dl_fcb, dl_bt4c, l_ln2, l_fcw, B, T, C, 4 * C);
         // layernorm backward does += to the dresidual, so it correctly accumulates grad from the MLP block above
