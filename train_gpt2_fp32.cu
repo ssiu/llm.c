@@ -1330,6 +1330,7 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
     A = &A((block_idx << 7), 0);
     B = &B(0, (block_idy << 7));
     dinp = &dinp((block_idx << 7), (block_idy << 7));
+    inp = &inp((block_idx << 7), (block_idy << 7));
 
     __shared__ float sA[2][TILE_WIDTH * BLOCK_WIDTH];
     __shared__ float sB[2][TILE_WIDTH * BLOCK_WIDTH];
