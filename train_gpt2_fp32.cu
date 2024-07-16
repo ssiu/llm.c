@@ -1257,33 +1257,6 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
 }
 
 
-__global__ void fused_matmul_gelu_backward_kernel1(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
-    int row = by*32 + ty;
-    int col = bx*32 + tx;
-    A = &A[row*OC];
-    B = &B[col];
-    float sum = 0;
-    for (int k=0; k<OC; k++) {
-        sum += A[k] * B[k*C];
-    }
-
-    float x = inp[row*C + col];
-    float cube = 0.044715f * x * x * x;
-    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
-    float tanh_out = tanhf(tanh_arg);
-    float coshf_out = coshf(tanh_arg);
-    float sech_out = 1.0f / (coshf_out * coshf_out);
-    float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
-    sum = local_grad * sum;
-    dinp[row*C + col] = sum;
-
-
-}
-
 //__device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
 //   for (int i=0;i<4;i ++ ){
 //        float x = inp[i];
@@ -1309,6 +1282,37 @@ __device__ inline void epilogue_gelu_backward(float dinp, float inp) {
     float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
     dinp = local_grad * dinp;
 }
+
+
+__global__ void fused_matmul_gelu_backward_kernel1(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int row = by*32 + ty;
+    int col = bx*32 + tx;
+    A = &A[row*OC];
+    B = &B[col];
+    float sum = 0;
+    for (int k=0; k<OC; k++) {
+        sum += A[k] * B[k*C];
+    }
+    epilogue_gelu_backward()
+    float x = inp[row*C + col];
+    epilogue_gelu_backward(sum, x);
+//    float cube = 0.044715f * x * x * x;
+//    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+//    float tanh_out = tanhf(tanh_arg);
+//    float coshf_out = coshf(tanh_arg);
+//    float sech_out = 1.0f / (coshf_out * coshf_out);
+//    float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+//    sum = local_grad * sum;
+    dinp[row*C + col] = sum;
+
+
+}
+
+
 
 
 __global__ __launch_bounds__(256)
@@ -1512,9 +1516,7 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
 //    dim3 gridDim(B * T / 128, C / 128);
 //    dim3 blockDim(256);
 //    fused_matmul_gelu_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, pre_gelu_inp, B * T, C, OC);
-//    for (int i=0; i<10; i++){
-//        printf("%f", dinp[i]);
-//    }
+
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
     cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_T, C, OC, B*T, &one, inp, C, dout, OC, &one, dweight, C));
