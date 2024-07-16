@@ -1270,7 +1270,7 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
 //}
 
 
-__device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
+__device__ inline void epilogue_gelu_backward(float dinp, float inp) {
     float x = inp;
     float cube = 0.044715f * x * x * x;
     float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
