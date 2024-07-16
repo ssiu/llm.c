@@ -1419,10 +1419,18 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
                 reg_inp = inp(C_row + i, C_col + j + 32);
             } else if (i >= 4 and j < 4) {
                 reg_inp = inp(C_row + i + 16, C_col + j);
-            } else if (i >=4 and j >= 4){
+            } else if (i >= 4 and j >= 4){
                 reg_inp = inp(C_row + i + 16, C_col + j + 32);
             }
-            epilogue_gelu_backward(&accum[i * 8 + j], reg_inp);
+            //epilogue_gelu_backward(&accum[i * 8 + j], reg_inp);
+            float x = reg_inp;
+            float cube = 0.044715f * x * x * x;
+            float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+            float tanh_out = tanhf(tanh_arg);
+            float coshf_out = coshf(tanh_arg);
+            float sech_out = 1.0f / (coshf_out * coshf_out);
+            float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+            accum[i*8 + j] = local_grad * accum[i*8 + j];
         }
 
     }
