@@ -1256,6 +1256,33 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
     }
 }
 
+
+__global__ void fused_matmul_gelu_backward_kernel1(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int row = by*32 + ty;
+    int col = bx*32 + tx;
+    A = &A[row*OC];
+    B = &B[col];
+    float sum = 0;
+    for (int k=0; k<OC; k++) {
+        sum += A[k] * B[k*C];
+    }
+
+    float x = inp[row*C + col];
+    float cube = 0.044715f * x * x * x;
+    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+    float tanh_out = tanhf(tanh_arg);
+    float coshf_out = coshf(tanh_arg);
+    float sech_out = 1.0f / (coshf_out * coshf_out);
+    float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+    sum = local_grad * sum;
+    dinp[row*C + col] = sum;
+
+}
+
 //__device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
 //   for (int i=0;i<4;i ++ ){
 //        float x = inp[i];
@@ -1268,6 +1295,7 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
 //        dinp[i] = local_grad * dinp[i];
 //    }
 //}
+
 
 
 __device__ inline void epilogue_gelu_backward(float dinp, float inp) {
@@ -1283,7 +1311,7 @@ __device__ inline void epilogue_gelu_backward(float dinp, float inp) {
 
 
 __global__ __launch_bounds__(256)
-void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
+void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
     int block_idy = blockIdx.y;
@@ -1475,9 +1503,14 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
 //    dim3 blockDim(256);
 //    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
-    dim3 gridDim(B * T / 128, C / 128);
-    dim3 blockDim(256);
-    fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, pre_gelu_inp, B * T, C, OC);
+
+    dim3 gridDim(C / 32, B * T / 32);
+    dim3 blockDim(32, 32);
+    fused_matmul_gelu_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
+
+//    dim3 gridDim(B * T / 128, C / 128);
+//    dim3 blockDim(256);
+//    fused_matmul_gelu_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, pre_gelu_inp, B * T, C, OC);
 //    for (int i=0; i<10; i++){
 //        printf("%f", dinp[i]);
 //    }
