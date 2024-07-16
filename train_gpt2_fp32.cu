@@ -1446,19 +1446,35 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 //        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
 //        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
 //    }
-    for (int i=0; i< 8; i ++ ) {
-        for (int j=0; j< 8; j++){
-            if (i < 4 && j < 4) {
-                dinp[(C_row + i) * C + C_col + j] = accum[i*8 + j];
-            } else if (i < 4 && j >= 4) {
-                dinp[(C_row + i) * C + C_col + j + 32] = accum[i*8 + j];
-            } else if (i >= 4 && j < 4) {
-                dinp[(C_row + i + 16) * C + C_col + j] = accum[i*8 + j];
-            } else if (i >= 4 && j >= 4){
-                dinp[(C_row + i + 16) * C + C_col + j + 32] = accum[i*8 + j];
-            }
+    for (int i=0;i<4;i++) {
+        for (int j = 0;j<4;j++) {
+            dinp(C_row + i, C_col + j) = accum[i * 8 + j];
+        }
+        for (int j = 0;j<4;j++) {
+            dinp(C_row + i, C_col + j + 32) = accum[i * 8 + 4 + j];
+        }
+        for (int j = 0;j<4;j++) {
+            dinp(C_row + i + 16, C_col + j) = accum[(i + 4) * 8 + j];
+        }
+        for (int j = 0;j<4;j++) {
+            dinp(C_row + i + 16, C_col + j + 32) = accum[(i + 4) * 8 + 4 +j];
         }
     }
+
+
+//    for (int i=0; i< 8; i ++ ) {
+//        for (int j=0; j< 8; j++){
+//            if (i < 4 && j < 4) {
+//                dinp(C_row + i, C_col + j) = accum[i*8 + j];
+//            } else if (i < 4 && j >= 4) {
+//                dinp(C_row + i, C_col + j + 32) = accum[i*8 + j];
+//            } else if (i >= 4 && j < 4) {
+//                dinp(C_row + i + 16, C_col + j) = accum[i*8 + j];
+//            } else if (i >= 4 && j >= 4){
+//                dinp(C_row + i + 16, C_col + j + 32) = accum[i*8 + j];
+//            }
+//        }
+//    }
 }
 
 // ----------------------------------------------------------------------------
