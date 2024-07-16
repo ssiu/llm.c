@@ -1256,18 +1256,31 @@ void matmul_backward_kernel2(float* A, float* B, float* dinp, int BT, int C, int
     }
 }
 
+//__device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
+//   for (int i=0;i<4;i ++ ){
+//        float x = inp[i];
+//        float cube = 0.044715f * x * x * x;
+//        float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+//        float tanh_out = tanhf(tanh_arg);
+//        float coshf_out = coshf(tanh_arg);
+//        float sech_out = 1.0f / (coshf_out * coshf_out);
+//        float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+//        dinp[i] = local_grad * dinp[i];
+//    }
+//}
+
+
 __device__ inline void epilogue_gelu_backward(float* dinp, float* inp) {
-   for (int i=0;i<4;i ++ ){
-        float x = inp[i];
-        float cube = 0.044715f * x * x * x;
-        float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
-        float tanh_out = tanhf(tanh_arg);
-        float coshf_out = coshf(tanh_arg);
-        float sech_out = 1.0f / (coshf_out * coshf_out);
-        float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
-        dinp[i] = local_grad * dinp[i];
-    }
+    float x = inp;
+    float cube = 0.044715f * x * x * x;
+    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
+    float tanh_out = tanhf(tanh_arg);
+    float coshf_out = coshf(tanh_arg);
+    float sech_out = 1.0f / (coshf_out * coshf_out);
+    float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
+    dinp = local_grad * dinp;
 }
+
 
 __global__ __launch_bounds__(256)
 void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
@@ -1373,19 +1386,27 @@ void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* i
     }
 
     // load inp
-//    float reg_inp[64] = {};
-//
-//    #pragma unroll
-//    for (int i=0;i<4;i++) {
-//        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
-//        FLOAT_4(reg_inp[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
-//        FLOAT_4(reg_inp[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
-//        FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
+    float reg_inp[64] = {};
+
+    #pragma unroll
+    for (int i=0;i<4;i++) {
+        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
+        FLOAT_4(reg_inp[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
+        FLOAT_4(reg_inp[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
+        FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
 //        epilogue_gelu_backward(&accum[i * 8], &reg_inp[i * 8]);
 //        epilogue_gelu_backward(&accum[i * 8 + 4], &reg_inp[i * 8 + 4]);
 //        epilogue_gelu_backward(&accum[(i + 4) * 8], &reg_inp[(i + 4) * 8]);
 //        epilogue_gelu_backward(&accum[(i + 4) * 8 + 4], &reg_inp[(i + 4) * 8 + 4]);
-//    }
+    }
+    #pragma unroll
+    for (int i=0;i<8;i++) {
+        #pragma unroll
+        for (int j=0; i<8; j=+) {
+            epilogue_gelu_backward(accum[i*8+j], reg_inp[i*8+j]);
+        }
+    }
+
 
 //    storeToGmem_5(accum, C, N, C_gOffset);
 
