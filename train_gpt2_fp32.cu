@@ -1494,9 +1494,9 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
     // backward to input, uses = in the backward pass (set the gradient)
     //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
 
-//    dim3 gridDim(C / 32, B * T / 32);
-//    dim3 blockDim(32, 32);
-//    matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
+    dim3 gridDim(C / 32, B * T / 32);
+    dim3 blockDim(32, 32);
+    matmul_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
 
 //    dim3 gridDim(B * T / 128, C / 128);
@@ -1504,9 +1504,9 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
 //    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
 
-    dim3 gridDim(C / 32, B * T / 32);
-    dim3 blockDim(32, 32);
-    fused_matmul_gelu_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
+//    dim3 gridDim(C / 32, B * T / 32);
+//    dim3 blockDim(32, 32);
+//    fused_matmul_gelu_backward_kernel1<<<gridDim, blockDim>>>(dout, weight, dinp, inp, B * T, C, OC);
 
 //    dim3 gridDim(B * T / 128, C / 128);
 //    dim3 blockDim(256);
