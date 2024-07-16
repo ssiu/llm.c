@@ -1297,9 +1297,8 @@ __global__ void fused_matmul_gelu_backward_kernel1(float* A, float* B, float* di
     for (int k=0; k<OC; k++) {
         sum += A[k] * B[k*C];
     }
-    epilogue_gelu_backward()
-    float x = inp[row*C + col];
-    epilogue_gelu_backward(sum, x);
+
+    epilogue_gelu_backward(sum, inp[row*C + col]);
 //    float cube = 0.044715f * x * x * x;
 //    float tanh_arg = GELU_SCALING_FACTOR * (x + cube);
 //    float tanh_out = tanhf(tanh_arg);
