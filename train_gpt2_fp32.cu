@@ -1434,7 +1434,7 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
     dim3 blockDim(256);
     fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, pre_gelu_inp, B * T, C, OC);
     for (int i=0; i<10; i++){
-        print("%f", dinp[i]);
+        printf("%f", dinp[i]);
     }
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
