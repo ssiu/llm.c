@@ -1433,9 +1433,9 @@ void fused_matmul_gelu_backward(float* dinp, float* dweight, float* dbias,
     dim3 gridDim(B * T / 128, C / 128);
     dim3 blockDim(256);
     fused_matmul_gelu_backward_kernel<<<gridDim, blockDim>>>(dout, weight, dinp, pre_gelu_inp, B * T, C, OC);
-    for (int i=0; i<10; i++){
-        printf("%f", dinp[i]);
-    }
+//    for (int i=0; i<10; i++){
+//        printf("%f", dinp[i]);
+//    }
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
     cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_T, C, OC, B*T, &one, inp, C, dout, OC, &one, dweight, C));
