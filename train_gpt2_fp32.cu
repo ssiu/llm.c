@@ -1402,7 +1402,7 @@ void fused_matmul_gelu_backward_kernel(float* A, float* B, float* dinp, float* i
     #pragma unroll
     for (int i=0;i<8;i++) {
         #pragma unroll
-        for (int j=0; i<8; j=+) {
+        for (int j=0; j<8; j++) {
             epilogue_gelu_backward(accum[i*8+j], reg_inp[i*8+j]);
         }
     }
