@@ -1433,34 +1433,35 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 //    }
 
 // =====
-//    float reg_inp[64];
-//
-//    #pragma unroll
-//    for (int i=0;i<4;i++) {
-//        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
-//        FLOAT_4(accum[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
-//        FLOAT_4(accum[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
-//        FLOAT_4(accum[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
-//    }
-//
-//    for (int i=0; i<8; i ++) {
-//        for (int j=0; j<8;j++) {
-//            epilogue_gelu_backward(&accum[i*8+j], reg_inp[i*8+j]);
-//        }
-//    }
-// =====
-
+    float reg_inp[64];
 
     #pragma unroll
     for (int i=0;i<4;i++) {
+        FLOAT_4(reg_inp[i * 8]) = FLOAT_4(inp(C_row + i, C_col));
+        FLOAT_4(reg_inp[i * 8 + 4]) = FLOAT_4(inp(C_row + i, C_col + 32));
+        FLOAT_4(reg_inp[(i + 4) * 8]) = FLOAT_4(inp(C_row + i + 16, C_col));
+        FLOAT_4(reg_inp[(i + 4) * 8 + 4]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
+    }
+    #pragma unroll
+    for (int i=0; i<8; i ++) {
         #pragma unroll
-        for (int j = 0;j<4;j++) {
-            epilogue_gelu_backward(&accum[i * 8 + j], inp(C_row + i, C_col + j));
-            epilogue_gelu_backward(&accum[i * 8 + 4 + j], inp(C_row + i, C_col + j + 32));
-            epilogue_gelu_backward(&accum[(i + 4) * 8 + j], inp(C_row + i + 16, C_col + j));
-            epilogue_gelu_backward(&accum[(i + 4) * 8 + 4 +j], inp(C_row + i + 16, C_col + j + 32));
+        for (int j=0; j<8;j++) {
+            epilogue_gelu_backward(&accum[i*8+j], reg_inp[i*8+j]);
         }
     }
+// =====
+
+
+//    #pragma unroll
+//    for (int i=0;i<4;i++) {
+//        #pragma unroll
+//        for (int j = 0;j<4;j++) {
+//            epilogue_gelu_backward(&accum[i * 8 + j], inp(C_row + i, C_col + j));
+//            epilogue_gelu_backward(&accum[i * 8 + 4 + j], inp(C_row + i, C_col + j + 32));
+//            epilogue_gelu_backward(&accum[(i + 4) * 8 + j], inp(C_row + i + 16, C_col + j));
+//            epilogue_gelu_backward(&accum[(i + 4) * 8 + 4 +j], inp(C_row + i + 16, C_col + j + 32));
+//        }
+//    }
 
 
 //    storeToGmem_5(accum, C, N, C_gOffset);
