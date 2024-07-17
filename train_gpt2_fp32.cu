@@ -1451,7 +1451,7 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 //    }
 // =====
 
-// ?
+// 3.37
     #pragma unroll
     for (int i=0;i<4;i+=2) {
         float reg_inp[32];
