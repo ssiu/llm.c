@@ -1305,7 +1305,7 @@ __global__ void fused_matmul_gelu_backward_kernel1(float* A, float* B, float* di
 
 
 
-__global__ __launch_bounds__(256)
+__global__ __launch_bounds__(256,2)
 void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* inp, int BT, int C, int OC){
     int thread_id = threadIdx.x;
     int block_idx = blockIdx.x;
