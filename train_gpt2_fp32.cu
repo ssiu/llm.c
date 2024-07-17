@@ -1133,8 +1133,7 @@ __global__ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT,
 #define B(i,j) B[(i) * C + (j)]
 #define dinp(i,j) dinp[(i) * C + (j)]
 #define inp(i,j) inp[(i) * C + (j)]
-//#define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (i) + (j)]
-#define sA(pointer, i,j) sA[(pointer)][(i) * 129 + (j)]
+#define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
 #define BLOCK_WIDTH 128
 #define TILE_WIDTH 8
@@ -1333,7 +1332,7 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
     B = &B(0, (block_idy << 7));
     dinp = &dinp((block_idx << 7), (block_idy << 7));
 
-    __shared__ float sA[2][TILE_WIDTH * (BLOCK_WIDTH + 1)];
+    __shared__ float sA[2][TILE_WIDTH * BLOCK_WIDTH];
     __shared__ float sB[2][TILE_WIDTH * BLOCK_WIDTH];
 
 
