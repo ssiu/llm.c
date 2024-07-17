@@ -1133,7 +1133,8 @@ __global__ void matmul_backward_kernel1(float* A, float* B, float* dinp, int BT,
 #define B(i,j) B[(i) * C + (j)]
 #define dinp(i,j) dinp[(i) * C + (j)]
 #define inp(i,j) inp[(i) * C + (j)]
-#define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (i) + (j)]
+//#define sA(pointer, i,j) sA[(pointer)][((i) << 7) + (i) + (j)]
+#define sA(pointer, i,j) sA[(pointer)][(i) * 129 + (j)]
 #define sB(pointer, i,j) sB[(pointer)][((i) << 7) + (j)]
 #define BLOCK_WIDTH 128
 #define TILE_WIDTH 8
