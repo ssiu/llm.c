@@ -1451,26 +1451,63 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 //    }
 // =====
 
-
+// ?
     #pragma unroll
-    for (int i=0;i<4;i++) {
-        float reg_inp[16];
+    for (int i=0;i<4;i+2) {
+        float reg_inp[32];
         FLOAT_4(reg_inp[0]) = FLOAT_4(inp(C_row + i, C_col));
         FLOAT_4(reg_inp[4]) = FLOAT_4(inp(C_row + i, C_col + 32));
         FLOAT_4(reg_inp[8]) = FLOAT_4(inp(C_row + i + 16, C_col));
         FLOAT_4(reg_inp[12]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
+
+        FLOAT_4(reg_inp[16]) = FLOAT_4(inp(C_row + i + 1, C_col));
+        FLOAT_4(reg_inp[20]) = FLOAT_4(inp(C_row + i + 1, C_col + 32));
+        FLOAT_4(reg_inp[24]) = FLOAT_4(inp(C_row + i + 1 + 16, C_col));
+        FLOAT_4(reg_inp[28]) = FLOAT_4(inp(C_row + i + 1 + 16, C_col + 32));
         #pragma unroll
         for (int j = 0;j<4;j++) {
             epilogue_gelu_backward(&accum[i * 8 + j], reg_inp[j]);
             epilogue_gelu_backward(&accum[i * 8 + 4 + j], reg_inp[j + 4]);
             epilogue_gelu_backward(&accum[(i + 4) * 8 + j],  reg_inp[j + 8]);
             epilogue_gelu_backward(&accum[(i + 4) * 8 + 4 +j],  reg_inp[j + 12]);
+
+            epilogue_gelu_backward(&accum[(i + 1) * 8 + j], reg_inp[j + 16]);
+            epilogue_gelu_backward(&accum[(i + 1) * 8 + 4 + j], reg_inp[j + 20]);
+            epilogue_gelu_backward(&accum[(i + 1 + 4) * 8 + j],  reg_inp[j + 24]);
+            epilogue_gelu_backward(&accum[(i + 1 + 4) * 8 + 4 +j],  reg_inp[j + 28]);
         }
         FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
         FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
         FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
         FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+
+        FLOAT_4(dinp(C_row + i + 1, C_col)) = FLOAT_4(accum[(i + 1) * 8]);
+        FLOAT_4(dinp(C_row + i + 1, C_col + 32)) = FLOAT_4(accum[(i + 1) * 8 + 4]);
+        FLOAT_4(dinp(C_row + i + 1 + 16, C_col)) = FLOAT_4(accum[(i + 1+ 4) * 8]);
+        FLOAT_4(dinp(C_row + i + 1 + 16, C_col + 32)) = FLOAT_4(accum[(i + 1+ 4) * 8 + 4]);
     }
+
+
+// 3.36
+//    #pragma unroll
+//    for (int i=0;i<4;i++) {
+//        float reg_inp[16];
+//        FLOAT_4(reg_inp[0]) = FLOAT_4(inp(C_row + i, C_col));
+//        FLOAT_4(reg_inp[4]) = FLOAT_4(inp(C_row + i, C_col + 32));
+//        FLOAT_4(reg_inp[8]) = FLOAT_4(inp(C_row + i + 16, C_col));
+//        FLOAT_4(reg_inp[12]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
+//        #pragma unroll
+//        for (int j = 0;j<4;j++) {
+//            epilogue_gelu_backward(&accum[i * 8 + j], reg_inp[j]);
+//            epilogue_gelu_backward(&accum[i * 8 + 4 + j], reg_inp[j + 4]);
+//            epilogue_gelu_backward(&accum[(i + 4) * 8 + j],  reg_inp[j + 8]);
+//            epilogue_gelu_backward(&accum[(i + 4) * 8 + 4 +j],  reg_inp[j + 12]);
+//        }
+//        FLOAT_4(dinp(C_row + i, C_col)) = FLOAT_4(accum[i * 8]);
+//        FLOAT_4(dinp(C_row + i, C_col + 32)) = FLOAT_4(accum[i * 8 + 4]);
+//        FLOAT_4(dinp(C_row + i + 16, C_col)) = FLOAT_4(accum[(i+4) * 8]);
+//        FLOAT_4(dinp(C_row + i + 16, C_col + 32)) = FLOAT_4(accum[(i+4) * 8 + 4]);
+//    }
 
 
 //    #pragma unroll
