@@ -1453,7 +1453,7 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 
 // ?
     #pragma unroll
-    for (int i=0;i<4;i+2) {
+    for (int i=0;i<4;i+=2) {
         float reg_inp[32];
         FLOAT_4(reg_inp[0]) = FLOAT_4(inp(C_row + i, C_col));
         FLOAT_4(reg_inp[4]) = FLOAT_4(inp(C_row + i, C_col + 32));
