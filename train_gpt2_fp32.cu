@@ -1452,14 +1452,14 @@ void fused_matmul_gelu_backward_kernel2(float* A, float* B, float* dinp, float* 
 // =====
 
 
-    #pragma unroll
+    //#pragma unroll
     for (int i=0;i<4;i++) {
         float reg_inp[16];
         FLOAT_4(reg_inp[0]) = FLOAT_4(inp(C_row + i, C_col));
         FLOAT_4(reg_inp[4]) = FLOAT_4(inp(C_row + i, C_col + 32));
         FLOAT_4(reg_inp[8]) = FLOAT_4(inp(C_row + i + 16, C_col));
         FLOAT_4(reg_inp[12]) = FLOAT_4(inp(C_row + i + 16, C_col + 32));
-        #pragma unroll
+        //#pragma unroll
         for (int j = 0;j<4;j++) {
             epilogue_gelu_backward(&accum[i * 8 + j], reg_inp[j]);
             epilogue_gelu_backward(&accum[i * 8 + 4 + j], reg_inp[j + 4]);
