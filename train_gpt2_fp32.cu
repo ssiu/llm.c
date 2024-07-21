@@ -1569,6 +1569,10 @@ void fused_matmul_gelu_backward_kernel3(float* A, float* B, float* dinp, float* 
     int sB_row = thread_id >> 5;
     int sB_col = (thread_id & 31) << 2;
 
+    int permuted_warp_id = (warp_id ) ^ (thread_id & 1);
+    int permuted_thread_id = (permuted_warp_id << 5) + lane_id;
+    int permuted_sA_row = permuted_thread_id >> 1;
+
     int C_row = warp_row + thread_row;
     int C_col = warp_col + thread_col;
 
@@ -1594,7 +1598,7 @@ void fused_matmul_gelu_backward_kernel3(float* A, float* B, float* dinp, float* 
     FLOAT_4(rB) = FLOAT_4(B(sB_row, sB_col));
     #pragma unroll
     for (int i=0; i<4;i++){
-        sA(shared_pointer, sA_col + i, sA_row) = rA[i];
+        sA(shared_pointer, sA_col + i, permuted_sA_row) = rA[i];
         // sA[shared_pointer][sA_sOffset + i*BLOCK_WIDTH] = rA[i];
     }
 
@@ -1613,7 +1617,7 @@ void fused_matmul_gelu_backward_kernel3(float* A, float* B, float* dinp, float* 
             FLOAT_4(rB) = FLOAT_4(B(sB_row, sB_col));
         }
         #pragma unroll
-        for (int kFragment=0; kFragment<TILE_WIDTH; kFragment++) {
+        for (int kFragment=0; kFragment<4; kFragment++) {
             // load from smem A, B
             FLOAT_4(fA[0]) = FLOAT_4(sA(shared_pointer, kFragment, C_row));
             FLOAT_4(fA[4]) = FLOAT_4(sA(shared_pointer, kFragment, C_row + 16));
@@ -1630,6 +1634,23 @@ void fused_matmul_gelu_backward_kernel3(float* A, float* B, float* dinp, float* 
              }
         }
 
+        #pragma unroll
+        for (int kFragment=4; kFragment<TILE_WIDTH; kFragment++) {
+            // load from smem A, B
+            FLOAT_4(fA[0]) = FLOAT_4(sA(shared_pointer, kFragment, C_row + 16));
+            FLOAT_4(fA[4]) = FLOAT_4(sA(shared_pointer, kFragment, C_row));
+            FLOAT_4(fB[0]) = FLOAT_4(sB(shared_pointer, kFragment, C_col));
+            FLOAT_4(fB[4]) = FLOAT_4(sB(shared_pointer, kFragment, C_col + 32));
+
+            // compute outer product
+            #pragma unroll
+            for (int i=0; i<8;i++){
+                #pragma unroll
+                for (int j=0; j<8; j++) {
+                    accum[i*8+j] += fA[i] * fB[j];
+                }
+             }
+        }
         // store to smem sA, sB for next block
         if (kBlock < OC / TILE_WIDTH - 1) {
 
@@ -1637,7 +1658,7 @@ void fused_matmul_gelu_backward_kernel3(float* A, float* B, float* dinp, float* 
             //FLOAT_4(sA[sA_sOffset]) = FLOAT_4(rA);
             #pragma unroll
             for (int i=0; i<4;i++){
-                sA(shared_pointer^1, sA_col + i, sA_row) = rA[i];
+                sA(shared_pointer^1, sA_col + i, permuted_sA_row) = rA[i];
                 //sA[shared_pointer^1][sA_sOffset + i*BLOCK_WIDTH] = rA[i];
             }
 
