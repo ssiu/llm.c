@@ -1918,10 +1918,10 @@ void matmul_backward(float* dinp, float* dweight, float* dbias,
     float one = 1.0f;
     float zero = 0.0f;
     // backward to input, uses = in the backward pass (set the gradient)
-    //cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
-    dim3 gridDim(B * T / 128, C / 128);
-    dim3 blockDim(256);
-    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
+    cublasCheck(cublasSgemm(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, C, B*T, OC, &one, weight, C, dout, OC, &zero, dinp, C));
+//    dim3 gridDim(B * T / 128, C / 128);
+//    dim3 blockDim(256);
+//    matmul_backward_kernel2<<<gridDim, blockDim>>>(dout, weight, dinp, B * T, C, OC);
 
 
     // backward to weight, uses += in the backward pass (accumulate the gradient)
