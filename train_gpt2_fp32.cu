@@ -722,7 +722,7 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 // -FLT_MAX
 // fmaxf
 // expf
-__global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, float* vacuum) {
+__global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, float* vaccum) {
 // each threadblock computes a single row of q
 // each threadblock use 1 thread, computing a single row of q, and load
 // todo: multiply all elements of preatt elementwise by scale
@@ -732,7 +732,7 @@ __global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, fl
     q += q_offset;
     k += kv_offset;
     v += q_offset;
-    vacuum += kv_offset;
+    vaccum += kv_offset;
     float q_reg[HS] = {0.0f};
     float x = 0.0f;
     float m_old = -FLT_MAX;
@@ -772,7 +772,7 @@ __global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, fl
 
 
     }
-    // write vacuum to global memory
+    // write vaccum to global memory
     for (int i=0; i < HS; i++){
         vaccum[i] = o_reg[i];
     }
