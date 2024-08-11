@@ -722,34 +722,34 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 // -FLT_MAX
 // fmaxf
 // expf
-__global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, float* vaccum) {
+__global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, float* vacuum) {
 // each threadblock computes a single row of q
 // each threadblock use 1 thread, computing a single row of q, and load
 // todo: multiply all elements of preatt elementwise by scale
 //offset for q for this block
-    int q_offset = blockIdx.z * NH * T * HS + blockIdx.y * T * HS + blockIdx * HS;
+    int q_offset = blockIdx.z * NH * T * HS + blockIdx.y * T * HS + blockIdx.x * HS;
     int kv_offset = blockIdx.z * NH * T * HS + blockIdx.y * T * HS;
     q += q_offset;
     k += kv_offset;
     v += q_offset;
     vacuum += kv_offset;
-    float q_reg[HS] = 0;
-    float x = 0;
+    float q_reg[HS] = {0.0f};
+    float x = 0.0f;
     float m_old = -FLT_MAX;
     float m = -FLT_MAX;
-    float d_old = 0;
-    float d = 0;
-    float o_reg[HS] = 0;
+    float d_old = 0.0f;
+    float d = 0.0f;
+    float o_reg[HS] = {0.0f};
 
     // load q into register
     for (int i=0;i<HS;i++){
-        q_reg[i] = q[offset+i];
+        q_reg[i] = q[i];
     }
 
     for (int t = 0; t < T; t++) {
         // compute x_i
         for (int i = 0; i < HS; i++) {
-            x = q_reg[i] * k[offset + i] / sqrtf(HS);
+            x = q_reg[i] * k[i] / sqrtf(HS);
         }
         // compute m_i
         m = fmaxf(m_old, x);
@@ -794,8 +794,8 @@ void flash_attention_forward(float* out, float* qkvr, float* att,
                        int B, int T, int C, int NH) {
     // Note: `inp` is not needed for backward pass, so we re-use it as a scratch buffer.
     // Its contents will be overwritten by this function.
-//    const int block_size = 256;
-//    const int softmax_block_size = 256;
+    const int block_size = 256;
+    const int softmax_block_size = 256;
 
     // inp is (B, T, 3C) QKV
     // preatt, att are (B, NH, T, T)
@@ -1432,7 +1432,7 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
         attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
         flash_attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
-        matmul_forward_cublaslt(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
+        matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
         matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
