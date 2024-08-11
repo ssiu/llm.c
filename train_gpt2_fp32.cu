@@ -606,7 +606,6 @@ __global__ void fused_classifier_kernel3(float* logits, float* losses, float* pr
     }
 }
 
-<<<<<<< HEAD
 __device__ float4 ld_vec(const float* address) {
     return *reinterpret_cast<const float4*>(address);
 }
