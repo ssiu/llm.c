@@ -688,7 +688,6 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 }
 
 
-=======
 //// permute and separate inp from (B, T, 3, NH, HS) to 3X (B, NH, T, HS)
 //float *q, *k, *v;
 //q = qkvr + 0 * B * T * C;
@@ -786,7 +785,7 @@ __global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, fl
 #undef C
 #undef T
 #undef BLOCK_SIZE
->>>>>>> 4b07bec (added flash attention)
+
 // ----------------------------------------------------------------------------
 // kernel launchers
 
@@ -1433,12 +1432,8 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C);
         matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
         attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
-<<<<<<< HEAD
-        matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
-=======
         flash_attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
         matmul_forward_cublaslt(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
->>>>>>> 4b07bec (added flash attention)
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
         matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4*C);
