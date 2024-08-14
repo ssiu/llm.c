@@ -740,8 +740,9 @@ __global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, fl
     for (int t = 0; t < T; t++) {
         // compute x_i
         for (int i = 0; i < HS; i++) {
-            x = q_reg[i] * k[i] / sqrtf(HS);
+            x += q_reg[i] * k[i] ;
         }
+        x *= 1.0 / sqrtf(HS);
         // compute m_i
         m = fmaxf(m_old, x);
 
