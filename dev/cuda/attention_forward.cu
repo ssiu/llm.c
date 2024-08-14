@@ -1039,7 +1039,7 @@ void flash_attention_forward(float* out, float* qkvr, float* att,
 
     // now unpermute
     // y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
-    num_blocks = CEIL_DIV(B * T * C, block_size);
+    num_blocks = ceil_div(B * T * C, block_size);
     unpermute_kernel<<<num_blocks, block_size>>>(vaccum, out, B, T, NH, HS);
     cudaCheck(cudaGetLastError());
 }
