@@ -1030,7 +1030,7 @@ void flash_attention_forward(float* out, float* qkvr, float* att,
     // new approach: first cuBLAS another batched matmul
     float* vaccum = inp;
 
-    dim3 dimGrid(B, NH, T);
+    dim3 dimGrid(T, NH, B);
     dim3 dimBlock(1);
     flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(q, k, v, vaccum);
 
