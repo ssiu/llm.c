@@ -733,11 +733,11 @@ __global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, fl
     float o_reg[HS] = {0.0f};
 
     // load q into register
-    for (int i=0;i<HS;i++){
+    for (int i=0; i < HS; i++){
         q_reg[i] = q[i];
     }
-
-    for (int t = 0; t < T; t++) {
+    //masked softmax, up to blockIdx.x-th kv
+    for (int t = 0; t <= blockIdx.x; t++) {
         // compute x_i
         for (int i = 0; i < HS; i++) {
             x += q_reg[i] * k[i] ;
