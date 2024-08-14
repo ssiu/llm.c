@@ -992,12 +992,12 @@ void attention_forward4(float* out, float* vaccum, float* qkvr, float* preatt, f
 }
 
 
-void flash_attention_forward(float* out, float* qkvr, float* att,
+void flash_attention_forward(float* out, float* qkvr, float* preatt, float* att,
                        float* inp,
-                       int B, int T, int C, int NH) {
+                       int B, int T, int C, int NH, int block_size) {
     // Note: `inp` is not needed for backward pass, so we re-use it as a scratch buffer.
     // Its contents will be overwritten by this function.
-    const int block_size = 256;
+    //const int block_size = 256;
     const int softmax_block_size = 256;
 
     // inp is (B, T, 3C) QKV
