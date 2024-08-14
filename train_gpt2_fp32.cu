@@ -1431,7 +1431,7 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C);
         matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
         attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
-        //flash_attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
+        flash_attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
         matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);

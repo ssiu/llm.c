@@ -678,6 +678,105 @@ __global__ void attention_forward_fused1(float* out, float* preatt, float* att,
     }
 }
 
+//// permute and separate inp from (B, T, 3, NH, HS) to 3X (B, NH, T, HS)
+//float *q, *k, *v;
+//q = qkvr + 0 * B * T * C;
+//k = qkvr + 1 * B * T * C;
+//v = qkvr + 2 * B * T * C;
+//int total_threads = B * NH * T * HS;
+//int num_blocks = CEIL_DIV(total_threads, block_size);
+//permute_kernel<<<num_blocks, block_size>>>(q, k, v, inp, B, T, NH, HS);
+//cudaCheck(cudaGetLastError());
+//
+//// batched matrix multiply with cuBLAS
+//const float alpha = 1.0f;
+//const float beta = 0.0f;
+//float* preatt = inp;
+//cublasCheck(cublasSgemmStridedBatched(cublas_handle, CUBLAS_OP_T, CUBLAS_OP_N, T, T, HS, &alpha, k, HS, T * HS, q, HS, T * HS, &beta, preatt, T, T * T, B * NH));
+
+//vaccum
+// C = 768
+// NH = 12
+// HS = 64
+#define HS 64
+#define NH 12
+#define C 768
+#define T 1024
+// each threadblock computes a single row of q
+// we need T blocks to compute a single q
+// need T * B * NH to compute the whole attention
+// we will launch a 3d grid
+// blockDim.x = T
+// blockDim.y = NH
+// blockDim.z = B
+
+// -FLT_MAX
+// fmaxf
+// expf
+__global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, float* vaccum) {
+// each threadblock computes a single row of q
+// each threadblock use 1 thread, computing a single row of q, and load
+// todo: multiply all elements of preatt elementwise by scale
+//offset for q for this block
+    int q_offset = blockIdx.z * NH * T * HS + blockIdx.y * T * HS + blockIdx.x * HS;
+    int kv_offset = blockIdx.z * NH * T * HS + blockIdx.y * T * HS;
+    q += q_offset;
+    k += kv_offset;
+    v += q_offset;
+    vaccum += kv_offset;
+    float q_reg[HS] = {0.0f};
+    float x = 0.0f;
+    float m_old = -FLT_MAX;
+    float m = -FLT_MAX;
+    float d_old = 0.0f;
+    float d = 0.0f;
+    float o_reg[HS] = {0.0f};
+
+    // load q into register
+    for (int i=0;i<HS;i++){
+        q_reg[i] = q[i];
+    }
+
+    for (int t = 0; t < T; t++) {
+        // compute x_i
+        for (int i = 0; i < HS; i++) {
+            x = q_reg[i] * k[i] / sqrtf(HS);
+        }
+        // compute m_i
+        m = fmaxf(m_old, x);
+
+        // compute d_i
+        d = expf(m_old - m) * d_old + expf(x-m);
+
+        // compute o_i
+        for (int i = 0; i < HS; i++) {
+            o_reg[i] = expf(m_old - m) * d_old/d * o_reg[i] + expf(x-m)/d * v[i];
+        }
+
+        //update constants
+        m_old = m;
+        d_old = d;
+
+        //update k,v offset
+        k += HS;
+        v += HS;
+
+
+    }
+    // write vaccum to global memory
+    for (int i=0; i < HS; i++){
+        vaccum[i] = o_reg[i];
+    }
+
+}
+
+#undef HS
+#undef NH
+#undef C
+#undef T
+#undef BLOCK_SIZE
+
+
 // ----------------------------------------------------------------------------
 // kernel launcher
 
@@ -890,6 +989,59 @@ void attention_forward4(float* out, float* vaccum, float* qkvr, float* preatt, f
     // y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
     num_blocks = ceil_div(B * T * C, block_size);
     unpermute_kernel<<<num_blocks, block_size>>>(vaccum, out, B, T, NH, HS);
+}
+
+
+void flash_attention_forward(float* out, float* qkvr, float* att,
+                       float* inp,
+                       int B, int T, int C, int NH) {
+    // Note: `inp` is not needed for backward pass, so we re-use it as a scratch buffer.
+    // Its contents will be overwritten by this function.
+    const int block_size = 256;
+    const int softmax_block_size = 256;
+
+    // inp is (B, T, 3C) QKV
+    // preatt, att are (B, NH, T, T)
+    // output is (B, T, C)
+    int HS = C / NH; // head size
+
+    // permute and separate inp from (B, T, 3, NH, HS) to 3X (B, NH, T, HS)
+    float *q, *k, *v;
+    q = qkvr + 0 * B * T * C;
+    k = qkvr + 1 * B * T * C;
+    v = qkvr + 2 * B * T * C;
+    int total_threads = B * NH * T * HS;
+    int num_blocks = CEIL_DIV(total_threads, block_size);
+    permute_kernel<<<num_blocks, block_size>>>(q, k, v, inp, B, T, NH, HS);
+    cudaCheck(cudaGetLastError());
+
+    // batched matrix multiply with cuBLAS
+//    const float alpha = 1.0f;
+//    const float beta = 0.0f;
+//    float* preatt = inp;
+//    cublasCheck(cublasSgemmStridedBatched(cublas_handle, CUBLAS_OP_T, CUBLAS_OP_N, T, T, HS, &alpha, k, HS, T * HS, q, HS, T * HS, &beta, preatt, T, T * T, B * NH));
+//
+//    // multiply all elements of preatt elementwise by scale
+//    float scale = 1.0 / sqrtf(HS);
+//    int grid_size = CEIL_DIV(B * NH * T * 32, softmax_block_size);
+//    softmax_forward_kernel5<<<grid_size, softmax_block_size>>>(att, scale, preatt, B * NH, T);
+//    cudaCheck(cudaGetLastError());
+
+    // new approach: first cuBLAS another batched matmul
+    float* vaccum = inp;
+
+    dim3 dimGrid(B, NH, T);
+    dim3 dimBlock(1);
+    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(q, k, v, vaccum);
+
+    // y = att @ v # (B, nh, T, T) @ (B, nh, T, hs) -> (B, nh, T, hs)
+    //cublasCheck(cublasSgemmStridedBatched(cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, HS, T, T, &alpha, v, HS, T * HS, att, T, T * T, &beta, vaccum, HS, T * HS, B * NH));
+
+    // now unpermute
+    // y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
+    num_blocks = CEIL_DIV(B * T * C, block_size);
+    unpermute_kernel<<<num_blocks, block_size>>>(vaccum, out, B, T, NH, HS);
+    cudaCheck(cudaGetLastError());
 }
 
 
@@ -1255,6 +1407,10 @@ void attention_forward(int kernel_num,
                                (floatX*)preatt, (floatX*)att,
                                inp, B, T, C, NH, block_size, true);
             break;
+        case 7:
+            flash_attention_forward(out, vaccum, qkvr, preatt, att, inp, B, T, C, NH, block_size);
+            break;
+
         #ifdef ENABLE_CUDNN
         case 10:
             // note: validation only cares about out, which is out_fp32 of the function
