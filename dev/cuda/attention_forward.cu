@@ -992,12 +992,12 @@ void attention_forward4(float* out, float* vaccum, float* qkvr, float* preatt, f
 }
 
 
-void flash_attention_forward(float* out, float* qkvr, float* preatt, float* att,
+void flash_attention_forward(float* out, float* qkvr, float* att,
                        float* inp,
-                       int B, int T, int C, int NH, int block_size) {
+                       int B, int T, int C, int NH) {
     // Note: `inp` is not needed for backward pass, so we re-use it as a scratch buffer.
     // Its contents will be overwritten by this function.
-    //const int block_size = 256;
+    const int block_size = 256;
     const int softmax_block_size = 256;
 
     // inp is (B, T, 3C) QKV
@@ -1011,7 +1011,7 @@ void flash_attention_forward(float* out, float* qkvr, float* preatt, float* att,
     k = qkvr + 1 * B * T * C;
     v = qkvr + 2 * B * T * C;
     int total_threads = B * NH * T * HS;
-    int num_blocks = CEIL_DIV(total_threads, block_size);
+    int num_blocks = ceil_div(total_threads, block_size);
     permute_kernel<<<num_blocks, block_size>>>(q, k, v, inp, B, T, NH, HS);
     cudaCheck(cudaGetLastError());
 
@@ -1408,7 +1408,7 @@ void attention_forward(int kernel_num,
                                inp, B, T, C, NH, block_size, true);
             break;
         case 7:
-            flash_attention_forward(out, vaccum, qkvr, preatt, att, inp, B, T, C, NH, block_size);
+            flash_attention_forward(out, qkvr, att, inp, B, T, C, NH);
             break;
 
         #ifdef ENABLE_CUDNN
