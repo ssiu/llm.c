@@ -723,7 +723,7 @@ __global__ void flash_attention_forward_kernel0(float* q, float* k, float* v, fl
     q += q_offset;
     k += kv_offset;
     v += kv_offset;
-    vaccum += kv_offset;
+    vaccum += q_offset;
     float q_reg[HS] = {0.0f};
     float x = 0.0f;
     float m_old = -FLT_MAX;
