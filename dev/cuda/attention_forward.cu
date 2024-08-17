@@ -683,10 +683,10 @@ __global__ void attention_forward_fused1(float* out, float* preatt, float* att,
 // C = 768
 // NH = 12
 // HS = 64
-#define HS 64
-#define NH 12
-#define C 768
-#define T 1024
+//#define HS 64
+//#define NH 12
+//#define C 768
+//#define T 1024
 // each threadblock computes a single row of q
 // we need T blocks to compute a single q
 // need B * T * NH to compute the whole attention
@@ -765,11 +765,10 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 
 }
 
-#undef HS
-#undef NH
-#undef C
-#undef T
-#undef BLOCK_SIZE
+//#undef HS
+//#undef NH
+//#undef C
+//#undef T
 
 
 // ----------------------------------------------------------------------------
