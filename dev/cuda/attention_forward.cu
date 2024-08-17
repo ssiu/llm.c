@@ -711,10 +711,11 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
-    gQ = &inp[q_offset];
-    gK = &inp[k_offset];
-    gV = &inp[v_offset];
-    gO = &out[q_offset];
+    float* gQ = &inp[q_offset];
+    float* gK = &inp[k_offset];
+    float* gV = &inp[v_offset];
+    float* gO = &out[q_offset];
+
     float rQ[HS] = {0.0f};
     float rO[HS] = {0.0f};
     float x = 0.0f;
