@@ -708,60 +708,59 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 //offset for q for this block
 
 
-    out[0] = 1;
-//    int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-//    int k_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
-//    int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
-//    int o_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-//
-//    float* gQ = &inp[q_offset];
-//    float* gK = &inp[k_offset];
-//    float* gV = &inp[v_offset];
-//    float* gO = &out[o_offset];
-//
-//    float rQ[HS] = {0.0f};
-//    float rO[HS] = {0.0f};
-//    float x = 0.0f;
-//    float m_old = -FLT_MAX;
-//    float m = -FLT_MAX;
-//    float d_old = 0.0f;
-//    float d = 0.0f;
-//
-//    // load q into register
-//    for (int i=0; i < HS; i++){
-//        rQ[i] = gQ[i];
-//    }
-//    //masked softmax, up to blockIdx.y-th kv
-//    for (int t = 0; t <= blockIdx.y; t++) {
-//        // compute x_i
-//        for (int i = 0; i < HS; i++) {
-//            x += rQ[i] * gK[i];
-//        }
-//        x *= 1.0 / sqrtf(HS);
-//        // compute m_i
-//        m = fmaxf(m_old, x);
-//
-//        // compute d_i
-//        d = expf(m_old - m) * d_old + expf(x-m);
-//
-//        // compute o_i
-//        for (int i = 0; i < HS; i++) {
-//            rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
-//        }
-//
-//        //update constants
-//        m_old = m;
-//        d_old = d;
-//
-//        //update k,v offset
-//        gK += 3 * NH * HS;
-//        gV += 3 * NH * HS;
-//
-//    }
-//    // write vaccum to global memory
-//    for (int i=0; i < HS; i++){
-//        gO[i] = rO[i];
-//    }
+    int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    float* gQ = &inp[q_offset];
+    float* gK = &inp[k_offset];
+    float* gV = &inp[v_offset];
+    float* gO = &out[o_offset];
+
+    float rQ[HS] = {0.0f};
+    float rO[HS] = {0.0f};
+    float x = 0.0f;
+    float m_old = -FLT_MAX;
+    float m = -FLT_MAX;
+    float d_old = 0.0f;
+    float d = 0.0f;
+
+    // load q into register
+    for (int i=0; i < HS; i++){
+        rQ[i] = gQ[i];
+    }
+    //masked softmax, up to blockIdx.y-th kv
+    for (int t = 0; t <= blockIdx.y; t++) {
+        // compute x_i
+        for (int i = 0; i < HS; i++) {
+            x += rQ[i] * gK[i];
+        }
+        x *= 1.0 / sqrtf(HS);
+        // compute m_i
+        m = fmaxf(m_old, x);
+
+        // compute d_i
+        d = expf(m_old - m) * d_old + expf(x-m);
+
+        // compute o_i
+        for (int i = 0; i < HS; i++) {
+            rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
+        }
+
+        //update constants
+        m_old = m;
+        d_old = d;
+
+        //update k,v offset
+        gK += 3 * NH * HS;
+        gV += 3 * NH * HS;
+
+    }
+    // write vaccum to global memory
+    for (int i=0; i < HS; i++){
+        gO[i] = rO[i];
+    }
 
 }
 
