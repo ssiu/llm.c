@@ -714,7 +714,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     float* gQ = &inp[q_offset];
     float* gK = &inp[k_offset];
     float* gV = &inp[v_offset];
-    float* gO = &out[q_offset];
+    float* gO = &out[o_offset];
 
     float rQ[HS] = {0.0f};
     float rO[HS] = {0.0f};
@@ -743,7 +743,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 
         // compute o_i
         for (int i = 0; i < HS; i++) {
-            o[i] = expf(m_old - m) * d_old/d * o[i] + expf(x-m)/d * v[i];
+            rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
         //update constants
@@ -757,7 +757,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     }
     // write vaccum to global memory
     for (int i=0; i < HS; i++){
-        out[i] = o[i];
+        gO[i] = rO[i];
     }
 
 }
