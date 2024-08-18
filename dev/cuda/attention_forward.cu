@@ -740,6 +740,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     //masked softmax, up to blockIdx.y-th kv
     for (int t = 0; t <= blockIdx.y; t++) {
         // compute x_i
+        x = 0.0f;
         for (int i = 0; i < HS; i++) {
         // =========================
             if (blockIdx.y == 1)
