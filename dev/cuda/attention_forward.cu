@@ -710,11 +710,13 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 // todo: multiply all elements of preatt elementwise by scale
 //offset for q for this block
 
-    printf("NH = %d, T = %d, B = %d\n", blockIdx.x, blockIdx.y, blockIdx.z);
     int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
     int k_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
     int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    //printf("NH = %d, T = %d, B = %d\n", blockIdx.x, blockIdx.y, blockIdx.z);
+
 
     float* gQ = &inp[q_offset];
     float* gK = &inp[k_offset];
@@ -732,11 +734,16 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     // load q into register
     for (int i=0; i < HS; i++){
         rQ[i] = gQ[i];
+        if (blockIdx.y == 1)
+            printf("q is %f", gQ[i]);
     }
     //masked softmax, up to blockIdx.y-th kv
     for (int t = 0; t <= blockIdx.y; t++) {
         // compute x_i
         for (int i = 0; i < HS; i++) {
+        // =========================
+            if (blockIdx.y == 1)
+                printf("t = %d, k is %f", t, gK[i]);
             x += rQ[i] * gK[i];
         }
         x *= 1.0 / sqrtf(HS);
@@ -748,6 +755,9 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 
         // compute o_i
         for (int i = 0; i < HS; i++) {
+        // =========================
+        if (blockIdx.y == 1)
+            printf("t = %d, v is %f", t, gV[i]);
             rO[i] = expf(m_old) / expf(m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
@@ -759,9 +769,12 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
         gK += 3 * NH * HS;
         gV += 3 * NH * HS;
 
+
     }
     // write vaccum to global memory
     for (int i=0; i < HS; i++){
+        if (blockIdx.y == 1)
+            printf("o is %f", rO[i]);
         gO[i] = rO[i];
     }
 
