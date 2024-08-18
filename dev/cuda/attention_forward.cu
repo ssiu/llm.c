@@ -703,9 +703,10 @@ __global__ void attention_forward_fused1(float* out, float* preatt, float* att,
 // inp is (B, T, 3, NH, HS)
 // out is (B, T, NH, HS)
 
+#define HS 1
+#define NH 1
 
-
-__global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, int T, int NH, int HS) {
+__global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, int T) {
 // each threadblock computes a single row of q
 // each threadblock use 1 thread, computing a single row of q, and load
 // todo: multiply all elements of preatt elementwise by scale
@@ -999,7 +1000,7 @@ void flash_attention_forward(float* out, float* inp,
 
     dim3 dimGrid(NH, T, B);
     dim3 dimBlock(1);
-    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, B, T, NH, HS);
+    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, B, T);
 
 
     cudaCheck(cudaGetLastError());
@@ -1391,11 +1392,12 @@ int main(int argc, char **argv) {
     setup_main();
 
     int B = 1;
-    int T = 2;
+    int T = 1;
 //    int C = 768;
 //    int NH = 12;
-    int NH = 2;
-    int C = 64 * NH;
+    int HS = 1;
+    int NH = 1;
+    int C = HS * NH;
 
 
     int deviceIdx = 0;
