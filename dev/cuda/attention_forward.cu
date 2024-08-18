@@ -1395,7 +1395,6 @@ int main(int argc, char **argv) {
     int T = 1;
 //    int C = 768;
 //    int NH = 12;
-    int HS = 1;
     int NH = 1;
     int C = 64 * NH;
 
