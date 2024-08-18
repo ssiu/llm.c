@@ -683,10 +683,12 @@ __global__ void attention_forward_fused1(float* out, float* preatt, float* att,
 // C = 768
 // NH = 12
 // HS = 64
-//#define HS 64
-//#define NH 12
+
 //#define C 768
 //#define T 1024
+//#define HS 64
+//#define NH 12
+
 // each threadblock computes a single row of q
 // we need T blocks to compute a single q
 // need B * T * NH to compute the whole attention
@@ -700,6 +702,8 @@ __global__ void attention_forward_fused1(float* out, float* preatt, float* att,
 // blockDim.z = B
 // inp is (B, T, 3, NH, HS)
 // out is (B, T, NH, HS)
+
+
 
 __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, int T, int NH, int HS) {
 // each threadblock computes a single row of q
@@ -717,9 +721,9 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     float* gK = &inp[k_offset];
     float* gV = &inp[v_offset];
     float* gO = &out[o_offset];
-
-    float rQ[HS] = {0.0f};
-    float rO[HS] = {0.0f};
+    // HS = 64
+    float rQ[64] = {0.0f};
+    float rO[64] = {0.0f};
     float x = 0.0f;
     float m_old = -FLT_MAX;
     float m = -FLT_MAX;
@@ -995,7 +999,7 @@ void flash_attention_forward(float* out, float* inp,
 
     dim3 dimGrid(NH, T, B);
     dim3 dimBlock(1);
-    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, B, T, NH, HS);
+    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, B, T);
 
 
     cudaCheck(cudaGetLastError());
