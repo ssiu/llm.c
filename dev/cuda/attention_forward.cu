@@ -745,11 +745,11 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
         m = fmaxf(m_old, x);
 
         // compute d_i
-        d = expf(m_old - m) * d_old + expf(x-m);
+        d = expf(m_old) / expf(m) * d_old + expf(x-m);
 
         // compute o_i
         for (int i = 0; i < HS; i++) {
-            rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
+            rO[i] = expf(m_old) / expf(m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
         //update constants
