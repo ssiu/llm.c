@@ -999,7 +999,7 @@ void flash_attention_forward(float* out, float* inp,
 
     dim3 dimGrid(NH, T, B);
     dim3 dimBlock(1);
-    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, B, T);
+    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, B, T, NH, HS);
 
 
     cudaCheck(cudaGetLastError());
