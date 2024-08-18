@@ -1474,19 +1474,20 @@ int main(int argc, char **argv) {
         }
     }
     printf("All results match. Starting benchmarks.\n\n");
-    first_run_validation = false;
 
-    // benchmark speed of the kernel
-    for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
-        int block_size = block_sizes[j];
-        int repeat_times = 100;
-
-        float elapsed_time = benchmark_kernel(repeat_times, attention_forward,
-                                              kernel_num, d_out, d_stats, d_vaccum, d_qkvr, d_preatt, d_att,
-                                              d_inp, B, T, C, NH, block_size);
-
-        printf("block_size %4d | time %f ms\n", block_size, elapsed_time);
-    }
+//    first_run_validation = false;
+//
+//    // benchmark speed of the kernel
+//    for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+//        int block_size = block_sizes[j];
+//        int repeat_times = 100;
+//
+//        float elapsed_time = benchmark_kernel(repeat_times, attention_forward,
+//                                              kernel_num, d_out, d_stats, d_vaccum, d_qkvr, d_preatt, d_att,
+//                                              d_inp, B, T, C, NH, block_size);
+//
+//        printf("block_size %4d | time %f ms\n", block_size, elapsed_time);
+//    }
 
     // free memory
     free(out);
