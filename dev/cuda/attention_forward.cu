@@ -1392,10 +1392,10 @@ int main(int argc, char **argv) {
 
     int B = 4;
     int T = 2;
-//    int C = 768;
-//    int NH = 12;
-    int C = 64;
-    int NH = 1;
+    int C = 768;
+    int NH = 12;
+//    int C = 64;
+//    int NH = 1;
 
     int deviceIdx = 0;
     cudaCheck(cudaSetDevice(deviceIdx));
