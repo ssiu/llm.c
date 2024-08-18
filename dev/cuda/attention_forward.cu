@@ -1390,12 +1390,12 @@ void attention_forward(int kernel_num,
 int main(int argc, char **argv) {
     setup_main();
 
-    int B = 1;
-    int T = 3;
-//    int C = 768;
-//    int NH = 12;
-    int C = 64;
-    int NH = 1;
+    int B = 4;
+    int T = 2;
+    int C = 768;
+    int NH = 12;
+//    int C = 64;
+//    int NH = 1;
 
     int deviceIdx = 0;
     cudaCheck(cudaSetDevice(deviceIdx));
