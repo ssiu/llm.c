@@ -763,8 +763,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     }
     // write vaccum to global memory
     for (int i=0; i < HS; i++){
-        gO[i] = 1.0f;
-//        gO[i] = rO[i];
+        gO[i] = rO[i];
     }
 
 }
@@ -1392,7 +1391,7 @@ int main(int argc, char **argv) {
     setup_main();
 
     int B = 1;
-    int T = 1;
+    int T = 1024;
     int C = 768;
     int NH = 12;
 
