@@ -1390,7 +1390,7 @@ void attention_forward(int kernel_num,
 int main(int argc, char **argv) {
     setup_main();
 
-    int B = 4;
+    int B = 1;
     int T = 2;
     int C = 768;
     int NH = 12;
