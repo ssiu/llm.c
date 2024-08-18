@@ -769,8 +769,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 
 }
 
-//#undef HS
-//#undef NH
+#undef HS
+#undef NH
 //#undef C
 //#undef T
 
