@@ -712,7 +712,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 //offset for q for this block
 
 
-    int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS+1024;
+    int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
     int k_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
     int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
@@ -763,7 +763,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     }
     // write vaccum to global memory
     for (int i=0; i < HS; i++){
-        gO[i] = rO[i];
+        gO[i] = 1.0f;
+//        gO[i] = rO[i];
     }
 
 }
