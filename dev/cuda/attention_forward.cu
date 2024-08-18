@@ -1465,9 +1465,9 @@ int main(int argc, char **argv) {
 
     // first check the correctness of the kernel
     attention_forward_cpu(out, preatt, att, inp, B, T, C, NH);
-    for (int i=0; i < B * T * 3 * C; i++) {
-        printf("inp index = %d, value = %f\n", i, inp[i]);
-    }
+//    for (int i=0; i < B * T * 3 * C; i++) {
+//        printf("inp index = %d, value = %f\n", i, inp[i]);
+//    }
 
     for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
         int block_size = block_sizes[j];
