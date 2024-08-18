@@ -734,8 +734,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     // load q into register
     for (int i=0; i < HS; i++){
         rQ[i] = gQ[i];
-        if (blockIdx.y == 1)
-            printf("q is %f\n", gQ[i]);
+//        if (blockIdx.y == 1)
+//            printf("q is %f\n", gQ[i]);
     }
     //masked softmax, up to blockIdx.y-th kv
     for (int t = 0; t <= blockIdx.y; t++) {
@@ -743,8 +743,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
         x = 0.0f;
         for (int i = 0; i < HS; i++) {
         // =========================
-            if (blockIdx.y == 1)
-                printf("t = %d, k is %f\n", t, gK[i]);
+//            if (blockIdx.y == 1)
+//                printf("t = %d, k is %f\n", t, gK[i]);
             x += rQ[i] * gK[i];
         }
         x *= 1.0 / sqrtf(HS);
@@ -757,8 +757,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
         // compute o_i
         for (int i = 0; i < HS; i++) {
         // =========================
-        if (blockIdx.y == 1)
-            printf("t = %d, v is %f\n", t, gV[i]);
+//        if (blockIdx.y == 1)
+//            printf("t = %d, v is %f\n", t, gV[i]);
             rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
@@ -774,8 +774,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
     }
     // write vaccum to global memory
     for (int i=0; i < HS; i++){
-        if (blockIdx.y == 1)
-            printf("o is %f\n", rO[i]);
+//        if (blockIdx.y == 1)
+//            printf("o is %f\n", rO[i]);
         gO[i] = rO[i];
     }
 
@@ -1405,11 +1405,11 @@ int main(int argc, char **argv) {
 
     int B = 1;
     int T = 1024;
-//    int C = 768;
-//    int NH = 12;
-    int NH = 1;
-    int HS = 1;
-    int C = HS * NH;
+    int C = 768;
+    int NH = 12;
+//    int NH = 1;
+//    int HS = 1;
+//    int C = HS * NH;
 
 
     int deviceIdx = 0;
