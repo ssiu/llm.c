@@ -711,7 +711,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, int B, i
 // todo: multiply all elements of preatt elementwise by scale
 //offset for q for this block
 
-    printf("NH %d  T %d B %d", blockIdx.x, blockIdx.y, blockIdx.z)
+    printf("NH %d  T %d B %d", blockIdx.x, blockIdx.y, blockIdx.z);
     int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
     int k_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
     int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
