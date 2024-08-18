@@ -1397,7 +1397,7 @@ int main(int argc, char **argv) {
 //    int NH = 12;
     int HS = 1;
     int NH = 1;
-    int C = HS * NH;
+    int C = 64 * NH;
 
 
     int deviceIdx = 0;
