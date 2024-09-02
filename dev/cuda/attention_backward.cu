@@ -1326,6 +1326,11 @@ int main(int argc, char **argv) {
     // call backward() on the CPU to get our reference gradients
     attention_backward_cpu(dinp, dpreatt, datt, dout, inp, att, B, T, C, NH);
 
+
+    for (int i=0; i <  B * T * 3 * C; i++) {
+        printf("%d %f\n", i, dinp[i]);
+    }
+
     // create device memory for the backward pass
     float *d_dinp, *d_dqkvr, *d_dpreatt, *d_datt, *d_dvaccum, *d_dout;
     cudaCheck(cudaMalloc(&d_dinp, B * T * 3 * C * sizeof(float)));
@@ -1358,9 +1363,7 @@ int main(int argc, char **argv) {
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
     printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
-    for (int i=0; i <  B * T * 3 * C; i++) {
-        printf("%d %f\n", i, dinp[i]);
-    }
+
 
     // also let's manually step through the gradients here
     float* h_dinp = (float*)malloc(B * T * 3 * C * sizeof(float));
