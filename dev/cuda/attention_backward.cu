@@ -333,7 +333,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     float* gQ = &inp[0];
     float* gK = &inp[0];
     float* gV = &inp[0];
-    float* gO = &inp[0];
+    float* gO = &out[0];
     float* gdO = &dout[0];
 
     float* gdQ = &dinp[0];
@@ -406,8 +406,12 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     }
 
     for (int i=0;i<HS;i++) {
-        printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, inp[2 * HS + i], inp[i]);
+        printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, inp[2 * HS + i], out[i]);
     }
+
+//    for (int i=0;i<HS;i++) {
+//        printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, inp[2 * HS + i], inp[i]);
+//    }
 
     for (int i=0;i<HS;i++) {
         gdK[k_offset_current + i] = rdK[i] / sqrtf(HS);
