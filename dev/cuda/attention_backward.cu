@@ -1359,7 +1359,7 @@ int main(int argc, char **argv) {
     printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
     for (int i=0; i <  B * T * 3 * C) {
-        print('%d %f\n', i, dinp[i]);
+        printf('%d %f\n', i, dinp[i]);
     }
 
     // also let's manually step through the gradients here
