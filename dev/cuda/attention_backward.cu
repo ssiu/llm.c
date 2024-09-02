@@ -333,6 +333,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     float* gQ = &inp[0];
     float* gK = &inp[0];
     float* gV = &inp[0];
+    float* gO = &inp[0];
     float* gdO = &dout[0];
 
     float* gdQ = &dinp[0];
@@ -361,16 +362,16 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             for (int k=0; k < HS; k++){
                 qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
             }
-            float e = expf(qk / sqrtf(HS) - ll)
+            float e = expf(qk / sqrtf(HS) - ll);
 
             for (int i=0; i < HS;i++) {
-                rdV[i] += e * gdO[o_offset_current + i]
+                rdV[i] += e * gdO[o_offset_current + i];
             }
         }
     }
 
     for (int i=0;i<HS;i++){
-        gdV[v_offset_current + i] = rdV[i]
+        gdV[v_offset_current + i] = rdV[i];
     }
 
 
@@ -397,7 +398,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             }
 
             for (int i=0;i< HS; i++){
-                rdK[i] = e * (dov - doo) * gQ[dq_offset + i ];
+                rdK[i] = e * (dov - doo) * gQ[q_offset_start + j * qkv_T_increment + i ];
             }
         }
     }
@@ -430,7 +431,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             }
 
             for (int i=0;i< HS; i++){
-                rdQ[i] = e * (dov - doo) * gK[dq_offset + i ];
+                rdQ[i] = e * (dov - doo) * gK[k_offset_start + j * qkv_T_increment + i ];
             }
         }
 
