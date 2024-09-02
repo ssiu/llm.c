@@ -310,16 +310,16 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
                                 int B, int T, int NH, int HS) {
 // each threadblock use 1 thread, computing a single row of dq, dk and dv
     // offset for the dq,dk,dv rows that this
-    int q_offset_start = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int k_offset_start = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
-    int v_offset_start = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
-    int o_offset_start = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int q_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset_start = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
     // offset for the q,k,v of the corresponding head
-    int q_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int k_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
-    int v_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
-    int o_offset_current = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int q_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset_current = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
     // following flashattention 2, we only store (log (L) + m) instead of L, m
     int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
