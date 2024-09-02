@@ -323,8 +323,7 @@ void validate_result(D* device_result, const T* cpu_reference, const char* name,
             continue;
 
         // print the first few comparisons
-        //if (i < 5) {
-        if (i < num_elements) {
+        if (i < 5) {
             printf("%d %f %f\n", i, cpu_reference[i], (T)out_gpu[i]);
         }
         // effective tolerance is based on expected rounding error (epsilon),
@@ -334,7 +333,7 @@ void validate_result(D* device_result, const T* cpu_reference, const char* name,
         if (fabs(cpu_reference[i] - (T)out_gpu[i]) > t_eff) {
             printf("Mismatch of %s at %d: CPU_ref: %f vs GPU: %f\n", name, i, cpu_reference[i], (T)out_gpu[i]);
             nfaults ++;
-            if (nfaults >= 10) {
+            if (nfaults >= 1000) {
                 free(out_gpu);
                 exit(EXIT_FAILURE);
             }
