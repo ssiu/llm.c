@@ -306,7 +306,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 // blockDim.y = T
 // blockDim.z = B
 
-__global__ void flash_attention_backward_kernel0(float dinp, float* inp, float dout, float* out, float* l,
+__global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
                                 int B, int T, int NH, int HS) {
 // each threadblock use 1 thread, computing a single row of dq, dk and dv
     // offset for the dq,dk,dv rows that this
@@ -995,7 +995,7 @@ void flash_attention_forward(float* out, float* inp, float* l,
 }
 
 
-void flash_attention_backward(float dinp, float* inp, float dout, float* out, float* l,
+void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* l,
                                 int B, int T, int C, int NH) {
 
     int HS = C / NH; // head size
