@@ -330,14 +330,14 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
     int o_T_increment = NH * HS;
     int l_T_increment = NH;
 
-    float* gQ = &inp[q_offset_start];
-    float* gK = &inp[k_offset_start];
-    float* gV = &inp[v_offset_start];
-    float* gdO = &dout[o_offset_start];
+    float* gQ = &inp[0];
+    float* gK = &inp[0];
+    float* gV = &inp[0];
+    float* gdO = &dout[0];
 
-    float* gdQ = &dinp[dq_offset];
-    float* gdK = &dinp[dk_offset];
-    float* gdV = &dinp[dv_offset];
+    float* gdQ = &dinp[0];
+    float* gdK = &dinp[0];
+    float* gdV = &dinp[0];
 
 
 
@@ -361,7 +361,7 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
             for (int k=0; k < HS; k++){
                 qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
             }
-            e = expf(qk / sqrtf(HS) - ll)
+            float e = expf(qk / sqrtf(HS) - ll)
 
             for (int i=0; i < HS;i++) {
                 rdV[i] += e * gdO[o_offset_current + i]
@@ -375,7 +375,7 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
 
 
     // dk
-    for (int j=0; j < T; i++) {
+    for (int j=0; j < T; j++) {
         if (j >= blockIdx.y) {
             // exp(qk^T-m)/L
             float qk = 0;
@@ -383,7 +383,7 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
             for (int k=0;k<HS;k++) {
                 qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
             }
-            float e = expf(qk / sqrtf(HS) - ll)
+            float e = expf(qk / sqrtf(HS) - ll);
 
             // dOV^T/
             float dov = 0;
@@ -396,7 +396,7 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
                 doo += gdO[o_offset_start + j * qkv_T_increment + k] * gO[o_offset_start + j* qkv_T_increment + k];
             }
 
-            for (int i=0;i< HS; k++){
+            for (int i=0;i< HS; i++){
                 rdK[i] = e * (dov - doo) * gQ[dq_offset + i ];
             }
         }
@@ -409,14 +409,14 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
 
 
     // dq
-    for (int j=0; j < T; i++) {
+    for (int j=0; j < T; j++) {
         if (j <= blockIdx.y) {
             float qk = 0;
             float ll = l[l_offset_current];
             for (int k=0;k<HS;k++) {
                 qk += gQ[q_offset_current + k] * gK[k_offset_start + j * qkv_T_increment + k];
             }
-            float e = expf(qk / sqrtf(HS) - ll)
+            float e = expf(qk / sqrtf(HS) - ll);
 
             // dOV^T/
             float dov = 0;
@@ -429,7 +429,7 @@ __global__ void flash_attention_backward_kernel0(float dinp, float* inp, float d
                 doo += gdO[o_offset_current + k] * gO[o_offset_current + k];
             }
 
-            for (int i=0;i< HS; k++){
+            for (int i=0;i< HS; i++){
                 rdQ[i] = e * (dov - doo) * gK[dq_offset + i ];
             }
         }
