@@ -321,7 +321,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     int v_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_offset_current = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
-    // following flashattention 2, we only store log (L) + m instead of L, m
+    // following flashattention 2, we only store (log (L) + m) instead of L, m
     int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
     int l_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
 
@@ -371,6 +371,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     }
 
     for (int i=0;i<HS;i++){
+        printf("checking %d %f", i, rdV[i])
         gdV[v_offset_current + i] = rdV[i];
     }
 
