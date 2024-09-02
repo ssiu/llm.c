@@ -325,7 +325,7 @@ void validate_result(D* device_result, const T* cpu_reference, const char* name,
         // print the first few comparisons
         //if (i < 5) {
         if (i < num_elements) {
-            printf("%f %f\n", cpu_reference[i], (T)out_gpu[i]);
+            printf("%d %f %f\n", i, cpu_reference[i], (T)out_gpu[i]);
         }
         // effective tolerance is based on expected rounding error (epsilon),
         // plus any specified additional tolerance
