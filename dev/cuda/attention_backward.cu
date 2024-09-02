@@ -322,8 +322,9 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     int o_offset_current = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
     // following flashattention 2, we only store (log (L) + m) instead of L, m
-    int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
     int l_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
+    int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+
 
 
     int qkv_T_increment = 3 * NH * HS;
@@ -365,7 +366,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             float e = expf(qk / sqrtf(HS) - ll);
 
             for (int i=0; i < HS;i++) {
-                rdV[i] += e * gdO[o_offset_current + i];
+                rdV[i] += e * gdO[o_offset_start + j * o_T_increment + i];
             }
         }
     }
