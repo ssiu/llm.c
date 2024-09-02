@@ -1354,7 +1354,7 @@ int main(int argc, char **argv) {
 //    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
 //                       d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
 //                       B, T, C, NH, block_size);
-    flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
+    //flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
 
 //    for (int i=0; i <  B * T * 3 * C; i++) {
 //        printf("i = %d, cpu = %f\n", i, dinp[i], d_dinp[i]);
