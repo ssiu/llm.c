@@ -1352,9 +1352,9 @@ int main(int argc, char **argv) {
 //                       B, T, C, NH, block_size);
     flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
 
-//    for (int i=0; i <  5; i++) {
-//        printf("i = %d, cpu = %f, gpu = %f \n", i, dinp[i], d_dinp[i]);
-//    }
+    for (int i=0; i <  B * T * 3 * C; i++) {
+        printf("i = %d, cpu = %f, gpu = %f \n", i, dinp[i]);
+    }
 
     // check that the gradients match between the CPU and GPU versions
     // note that we will only check the correctness at [att, preatt, inp]
