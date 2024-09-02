@@ -401,7 +401,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             //printf("INSIDE KERNEL, doo = %f, dov = %f\n", doo, dov);
             for (int i=0;i< HS; i++){
                 //printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, gV[v_offset_current + i], gO[o_offset_start + j * o_T_increment + i]);
-                rdK[i] = e * (dov - doo) * gQ[q_offset_start + j * qkv_T_increment + i ];
+                rdK[i] += e * (dov - doo) * gQ[q_offset_start + j * qkv_T_increment + i ];
             }
         }
     }
@@ -417,8 +417,6 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     for (int i=0;i<HS;i++) {
         gdK[k_offset_current + i] = rdK[i] / sqrtf(HS);
     }
-
-
 
     // dq
     for (int j=0; j < T; j++) {
@@ -442,7 +440,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             }
 
             for (int i=0;i< HS; i++){
-                rdQ[i] = e * (dov - doo) * gK[k_offset_start + j * qkv_T_increment + i ];
+                rdQ[i] += e * (dov - doo) * gK[k_offset_start + j * qkv_T_increment + i ];
             }
         }
 
