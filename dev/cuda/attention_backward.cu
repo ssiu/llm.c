@@ -404,7 +404,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     }
 
     for (int i=0;i<HS;i++) {
-        gdK[dk_offset + i] = rdK[i] / sqrtf(HS);
+        gdK[k_offset_current + i] = rdK[i] / sqrtf(HS);
     }
 
 
@@ -1002,7 +1002,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     int HS = C / NH; // head size
     dim3 dimGrid(NH, T, B);
     dim3 dimBlock(1);
-    flash_attention_backward_kernel0(dinp, inp, dout, out, l, B, T, NH, HS);
+    flash_attention_backward_kernel0<<<dimGrid, dimBlock>>>(dinp, inp, dout, out, l, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
