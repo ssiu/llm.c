@@ -371,7 +371,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     }
 
     for (int i=0;i<HS;i++){
-        printf("checking inside kernel %d %f\n", i, rdV[i]);
+        //printf("checking inside kernel %d %f\n", i, rdV[i]);
         gdV[v_offset_current + i] = rdV[i];
     }
 
