@@ -397,7 +397,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
             for (int k=0; k < HS; k++) {
                 doo += gdO[o_offset_start + j * o_T_increment + k] * gO[o_offset_start + j * o_T_increment + k];
             }
-
+            printf("INSIDE KERNEL, doo = %f, dov = %f\n", doo, dov);
             for (int i=0;i< HS; i++){
                 rdK[i] = e * (dov - doo) * gQ[q_offset_start + j * qkv_T_increment + i ];
             }
