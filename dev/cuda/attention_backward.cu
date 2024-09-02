@@ -187,6 +187,263 @@ void attention_backward_cpu(float* dinp, float* dpreatt, float* datt,
 // GPU kernels
 // the forward pass that is the sequence [permute, sgemm, softmax, sgemm, unpermute]
 
+// C = 768
+// NH = 12
+// HS = 64
+
+//#define C 768
+//#define T 1024
+//#define HS 64
+//#define NH 12
+
+// each threadblock computes a single row of q
+// we need T blocks to compute a single q
+// need B * T * NH to compute the whole attention
+
+// -FLT_MAX
+// fmaxf
+// expf
+
+// blockDim.x = NH
+// blockDim.y = T
+// blockDim.z = B
+// inp is (B, T, 3, NH, HS)
+// out is (B, T, NH, HS)
+// l is (B, T, NH)
+
+
+// input is (B, T, 3C) holding the query, key, value (Q, K, V) vectors
+// preatt, att are (B, NH, T, T). NH = number of heads, T = sequence length
+// that holds the pre-attention and post-attention scores (used in backward)
+// output is (B, T, C)
+// attention is the only layer that mixes information across time
+// every other operation is applied at every (b,t) position independently
+// (and of course, no layer mixes information across batch)
+__global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l,
+                                int B, int T, int NH, int HS) {
+// each threadblock computes a single row of o
+// each threadblock use 1 thread, computing a single row of o
+// todo: multiply all elements of preatt elementwise by scale
+//offset for q for this block
+
+    int q_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset = blockIdx.z * T * 3 * NH * HS +          0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int l_offset = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+    //printf("NH = %d, T = %d, B = %d\n", blockIdx.x, blockIdx.y, blockIdx.z);
+    float* gQ = &inp[q_offset];
+    float* gK = &inp[k_offset];
+    float* gV = &inp[v_offset];
+    float* gO = &out[o_offset];
+    float* gL = &l[l_offset];
+    // HS = 64
+    float rQ[64] = {0.0f};
+    float rO[64] = {0.0f};
+    float x = 0.0f;
+    float m_old = -FLT_MAX;
+    float m = -FLT_MAX;
+    float d_old = 0.0f;
+    float d = 0.0f;
+
+    // load q into register
+    for (int i=0; i < HS; i++){
+        rQ[i] = gQ[i];
+//        if (blockIdx.y == 1)
+//            printf("q is %f\n", gQ[i]);
+    }
+    //masked softmax, up to blockIdx.y-th kv
+    for (int t = 0; t <= blockIdx.y; t++) {
+        // compute x_i
+        x = 0.0f;
+        for (int i = 0; i < HS; i++) {
+        // =========================
+//            if (blockIdx.y == 1)
+//                printf("t = %d, k is %f\n", t, gK[i]);
+            x += rQ[i] * gK[i];
+        }
+        x *= 1.0 / sqrtf(HS);
+        // compute m_i
+        m = fmaxf(m_old, x);
+
+        // compute d_i
+        d = expf(m_old - m) * d_old + expf(x-m);
+
+        // compute o_i
+        for (int i = 0; i < HS; i++) {
+        // =========================
+//        if (blockIdx.y == 1)
+//            printf("t = %d, v is %f\n", t, gV[i]);
+            rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
+        }
+
+        //update constants
+        m_old = m;
+        d_old = d;
+
+        //update k,v offset
+        gK += 3 * NH * HS;
+        gV += 3 * NH * HS;
+    }
+
+    gL[0] = logf(d) + m;
+
+    // write vaccum to global memory
+    for (int i=0; i < HS; i++){
+//        if (blockIdx.y == 1)
+//            printf("o is %f\n", rO[i]);
+        gO[i] = rO[i];
+    }
+
+}
+
+// inp/dinp are (B, T, 3C), (B, T, 3, NH, HS) Q,K,V
+//
+// att/datt/dpreatt are (B, NH, T, T)
+// dout is (B, T, C)
+// l is (B, T, NH)
+// blockDim.x = NH
+// blockDim.y = T
+// blockDim.z = B
+
+__global__ void flash_attention_backward_kernel0(float dinp, float* inp, float dout, float* out, float* l,
+                                int B, int T, int NH, int HS) {
+// each threadblock use 1 thread, computing a single row of dq, dk and dv
+    // offset for the dq,dk,dv rows that this
+    int q_offset_start = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset_start = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset_start = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset_start = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // offset for the q,k,v of the corresponding head
+    int q_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset_current = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset_current = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // following flashattention 2, we only store log (L) + m instead of L, m
+    int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+    int l_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
+
+
+    int qkv_T_increment = 3 * NH * HS;
+    int o_T_increment = NH * HS;
+    int l_T_increment = NH;
+
+    float* gQ = &inp[q_offset_start];
+    float* gK = &inp[k_offset_start];
+    float* gV = &inp[v_offset_start];
+    float* gdO = &dout[o_offset_start];
+
+    float* gdQ = &dinp[dq_offset];
+    float* gdK = &dinp[dk_offset];
+    float* gdV = &dinp[dv_offset];
+
+
+
+    // HS = 64
+    float rdQ[64] = {0.0f};
+    float rdK[64] = {0.0f};
+    float rdV[64] = {0.0f};
+
+
+
+    // logf
+    // dv
+    // loop over T
+    for (int j=0; j < T; j++) {
+
+        if (j >= blockIdx.y) {
+            // compute the exponential term
+            float qk = 0;
+            float ll = l[l_offset_start + j * l_T_increment];
+            // inner product for QK^T
+            for (int k=0; k < HS; k++){
+                qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
+            }
+            e = expf(qk / sqrtf(HS) - ll)
+
+            for (int i=0; i < HS;i++) {
+                rdV[i] += e * gdO[o_offset_current + i]
+            }
+        }
+    }
+
+    for (int i=0;i<HS;i++){
+        gdV[v_offset_current + i] = rdV[i]
+    }
+
+
+    // dk
+    for (int j=0; j < T; i++) {
+        if (j >= blockIdx.y) {
+            // exp(qk^T-m)/L
+            float qk = 0;
+            float ll = l[l_offset_start + j * l_T_increment];
+            for (int k=0;k<HS;k++) {
+                qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
+            }
+            float e = expf(qk / sqrtf(HS) - ll)
+
+            // dOV^T/
+            float dov = 0;
+            for (int k=0; k<HS; k++) {
+                dov += gdO[o_offset_start + j * o_T_increment + k] * gV[v_offset_current + k];
+            }
+            // dO O^T
+            float doo = 0;
+            for (int k=0; k < HS; k++) {
+                doo += gdO[o_offset_start + j * qkv_T_increment + k] * gO[o_offset_start + j* qkv_T_increment + k];
+            }
+
+            for (int i=0;i< HS; k++){
+                rdK[i] = e * (dov - doo) * gQ[dq_offset + i ];
+            }
+        }
+    }
+
+    for (int i=0;i<HS;i++) {
+        gdK[dk_offset + i] = rdK[i] / sqrtf(HS);
+    }
+
+
+
+    // dq
+    for (int j=0; j < T; i++) {
+        if (j <= blockIdx.y) {
+            float qk = 0;
+            float ll = l[l_offset_current];
+            for (int k=0;k<HS;k++) {
+                qk += gQ[q_offset_current + k] * gK[k_offset_start + j * qkv_T_increment + k];
+            }
+            float e = expf(qk / sqrtf(HS) - ll)
+
+            // dOV^T/
+            float dov = 0;
+            for (int k=0; k < HS; k++) {
+                dov += gdO[o_offset_current + k] * gV[v_offset_start + j * qkv_T_increment + k];
+            }
+            // dO O^T
+            float doo = 0;
+            for (int k=0; k < HS; k++) {
+                doo += gdO[o_offset_current + k] * gO[o_offset_current + k];
+            }
+
+            for (int i=0;i< HS; k++){
+                rdQ[i] = e * (dov - doo) * gK[dq_offset + i ];
+            }
+        }
+
+    }
+
+    for (int i=0;i<HS;i++) {
+        gdQ[q_offset_current + i] = rdQ[i] / sqrtf(HS);
+    }
+
+
+}
+
+
 __global__ void permute_kernel(float* q, float* k, float* v,
                                const float* inp,
                                int B, int N, int NH, int d) {
@@ -720,6 +977,35 @@ __global__ void softmax_autoregressive_backward_kernel8(float* dpreatt, const fl
 // ----------------------------------------------------------------------------
 // kernel launchers
 
+// use att to store log l + m
+void flash_attention_forward(float* out, float* inp, float* l,
+                                int B, int T, int C, int NH) {
+
+
+    // inp is (B, T, 3, NH, HS)
+    // out is (B, T, NH, HS)
+    // l is (B, T, NH)
+    int HS = C / NH; // head size
+    dim3 dimGrid(NH, T, B);
+    dim3 dimBlock(1);
+    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
+
+    cudaCheck(cudaGetLastError());
+
+}
+
+
+void flash_attention_backward(float dinp, float* inp, float dout, float* out, float* l,
+                                int B, int T, int C, int NH) {
+
+    int HS = C / NH; // head size
+    dim3 dimGrid(NH, T, B);
+    dim3 dimBlock(1);
+    flash_attention_backward_kernel0(dinp, inp, dout, out, l, B, T, NH, HS);
+
+    cudaCheck(cudaGetLastError());
+}
+
 // attention forward pass kernel
 void attention_forward(float* out, float* vaccum, float* qkvr, float* preatt, float* att,
                        const float* inp,
@@ -1006,24 +1292,26 @@ int main(int argc, char **argv) {
     attention_forward_cpu(out, preatt, att, inp, B, T, C, NH);
 
     // create device memory for the forward pass
-    float *d_inp, *d_qkvr, *d_preatt, *d_att, *d_vaccum, *d_out;
+    float *d_inp, *d_qkvr, *d_preatt, *d_att, *d_vaccum, *d_out, *d_l;
     cudaCheck(cudaMalloc(&d_inp, B * T * 3 * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_qkvr, B * T * 3 * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_preatt, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMalloc(&d_att, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMalloc(&d_vaccum, B * T * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_out, B * T * C * sizeof(float)));
+    cudaCheck(cudaMalloc(&d_l, B * T * NH * sizeof(float)));
     // copy over the input
     cudaCheck(cudaMemcpy(d_inp, inp, B * T * 3 * C * sizeof(float), cudaMemcpyHostToDevice));
 
     // execute the forward pass on the GPU
     const int block_size = 256;
     attention_forward(d_out, d_vaccum, d_qkvr, d_preatt, d_att, d_inp, B, T, C, NH, block_size);
+    flash_attention_forward(d_out, d_inp, d_l, B, T, C, NH);
 
     // check that preatt, att, and out match between the CPU and GPU versions
     printf("Checking the forward pass CPU <-> GPU...\n");
-    printf("[preatt]\n"); validate_result(d_preatt, preatt, "preatt", B * T * C, 5e-3f);
-    printf("[att]\n");    validate_result(d_att, att, "att", B * T * C, 1e-3f);
+    //printf("[preatt]\n"); validate_result(d_preatt, preatt, "preatt", B * T * C, 5e-3f);
+    //printf("[att]\n");    validate_result(d_att, att, "att", B * T * C, 1e-3f);
     printf("[out]\n");    validate_result(d_out, out, "out", B * T * C, 1e-3f);
 
     // set up the memory for the backward pass
@@ -1053,17 +1341,18 @@ int main(int argc, char **argv) {
     cudaCheck(cudaMemset(d_dvaccum, 0, B * T * C * sizeof(float)));
 
     // call backward() on the GPU
-    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
+//    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
                        d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
                        B, T, C, NH, block_size);
+    flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
 
     // check that the gradients match between the CPU and GPU versions
     // note that we will only check the correctness at [att, preatt, inp]
     // the gradients at qkvr and vaccum will remain unchecked, but are
     // assumed to be correct if the other gradients are correct
     printf("Checking the backward pass CPU <-> GPU...\n");
-    printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
-    printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
+    //printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
+    //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
     printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
     // also let's manually step through the gradients here
