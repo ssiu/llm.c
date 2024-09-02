@@ -1346,9 +1346,6 @@ int main(int argc, char **argv) {
     cudaCheck(cudaMemset(d_datt, 0, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMemset(d_dvaccum, 0, B * T * C * sizeof(float)));
 
-    for (int i=0; i <  B * T * 3 * C; i++) {
-        printf("i = %d, d_dinp = %f\n", i, d_dqkvr[i]);
-    }
 
     // call backward() on the GPU
 //    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
