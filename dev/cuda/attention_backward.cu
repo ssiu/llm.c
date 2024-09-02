@@ -1358,7 +1358,7 @@ int main(int argc, char **argv) {
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
     printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
-    for (int i=0; i <  B * T * 3 * C) {
+    for (int i=0; i <  B * T * 3 * C; i++) {
         printf('%d %f\n', i, dinp[i]);
     }
 
