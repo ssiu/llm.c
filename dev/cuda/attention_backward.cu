@@ -1353,7 +1353,7 @@ int main(int argc, char **argv) {
     flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
 
     for (int i=0; i <  B * T * 3 * C; i++) {
-        printf("i = %d, cpu = %f, gpu = %f \n", i, dinp[i]);
+        printf("i = %d, cpu = %f\n", i, dinp[i]);
     }
 
     // check that the gradients match between the CPU and GPU versions
