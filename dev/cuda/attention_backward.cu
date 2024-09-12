@@ -475,11 +475,11 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
             for (int i=0; i<4; i++) {
                 rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
-                rK[i] = sK(k_fragment, rS_thread_col + i);
+                rK[i] = sK(k_fragment, thread_col + i);
             }
 
             for (int i = 0; i < 4; i++) {
-                for (j = 0; j < 4;++) {
+                for (int j = 0; j < 4; j++) {
                     rO[i][j] += rP[i] * rV[j];
                 }
             }
@@ -498,7 +498,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
     //rescale rO
     for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4;++) {
+        for (int j = 0; j < 4; j++) {
             rO[i][j] /= l[i];
         }
     }
