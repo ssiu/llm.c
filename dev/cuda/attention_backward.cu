@@ -385,7 +385,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // load gK to sK, need to first transpose
         float rK_shared[4];
         for (int i = 0; i < 4; i++) {
-            FLOAT4(rK_shared[0]) = FLOAT4(gK(warp_row + thread_row + i, thread_col));
+            FLOAT4(rK_shared[0]) = FLOAT4(gK(warp_row + thread_row , thread_col));
             for (int j=0; j < 4; j++) {
                 sK(thread_col + j, warp_row + thread_row + i) = rK_shared[j];
             }
@@ -1234,9 +1234,9 @@ void flash_attention_forward(float* out, float* inp, float* l,
 //    dim3 dimGrid(NH, T, B);
 //    dim3 dimBlock(1);
 //    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
-
+    int T_r = 64;
     int HS = C / NH; // head size
-    dim3 dimGrid(NH, T, B);
+    dim3 dimGrid(NH, T / T_r, B);
     dim3 dimBlock(256);
     flash_attention_forward_kernel1<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
 
