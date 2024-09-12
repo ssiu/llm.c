@@ -1230,10 +1230,15 @@ void flash_attention_forward(float* out, float* inp, float* l,
     // inp is (B, T, 3, NH, HS)
     // out is (B, T, NH, HS)
     // l is (B, T, NH)
+//    int HS = C / NH; // head size
+//    dim3 dimGrid(NH, T, B);
+//    dim3 dimBlock(1);
+//    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
+
     int HS = C / NH; // head size
     dim3 dimGrid(NH, T, B);
-    dim3 dimBlock(1);
-    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
+    dim3 dimBlock(256);
+    flash_attention_forward_kernel1<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 
@@ -1513,12 +1518,12 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-    int B = 4;
-    int T = 1024;
-    int C = 768;
-    int NH = 12;
-//    int C = 64;
-//    int NH = 1;
+    int B = 1;
+    int T = 64;
+//    int C = 768;
+//    int NH = 12;
+    int C = 64;
+    int NH = 1;
 
     // read kernel_num from command line
     int kernel_num = 1;
