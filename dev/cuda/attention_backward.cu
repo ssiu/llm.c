@@ -371,13 +371,16 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rS[4][4] = {0.0f};
     float (&rP)[4][4] = rS;
     float rO[4][4] = {0.0f};
-    float m_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
-    float m[4];
-    float l_old[4] = {0.0f};
-    float l[4] = {0.0f};
+    float rM_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
+    float rM[4];
+    float rL_old[4] = {0.0f};
+    float rL[4] = {0.0f};
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int kv_tile = 0; kv_tile <= blockIdx.y; kv_tile++) {
+
+
+
         // load gK to sK, need to first transpose
         float rK_shared[4];
         for (int i = 0; i < 4; i++) {
@@ -423,22 +426,22 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         // inter-thread reduction
         for (int i = 0; i < 4; i++) {
-            m[i] = m_old[i];
+            rM[i] = rM_old[i];
             for (int j = 0; j < 4;j++) {
-                    m[i] = fmaxf(m[i], rS[i][j]);
+                rM[i] = fmaxf(rM[i], rS[i][j]);
             }
         }
 
         //inter-warp reduction
         for (int i=0; i < 4; i++) {
             for (int offset = 8; offset > 0; offset /= 2) {
-                m[i] = fmaxf(m[i], __shfl_down_sync(mask, m[i], offset));
+               rM[i] = fmaxf(m[i], __shfl_down_sync(mask, rM[i], offset));
             }
         }
         // now threads 0, 16 have the correct m[i],
         // so we broadcast m back to the other lanes in the half warp
         for (int i=0; i<4; i++) {
-            m[i] = __shfl_sync(mask, m[i], thread_id_to_read_from);
+            rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
         }
 
         //
@@ -448,7 +451,16 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++){
-                rP[i][j] = expf(rS[i][j] - m[i]);
+                rP[i][j] = expf(rS[i][j] - rM[i]);
+            }
+        }
+
+        // compute l
+
+        for (int i=0;i<4;i++) {
+            rL[i] = exp(rM_old[i] - rM[i]);
+            for (int j=0;j<4;j++){
+                rL[i] += rP[i][j];
             }
         }
 
@@ -467,7 +479,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // first rescale O by exp(m_old - m)
         for (int i=0; i<4; i++) {
             for (int j=0;j<4;j++) {
-                rO[i][j] = expf(m[i] - m_old[i]) * rO[i][j];
+                rO[i][j] = expf(rM[i] - rM_old[i]) * rO[i][j];
             }
         }
         // add PV to rO
@@ -487,8 +499,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         // update m and l
         for (int i = 0; i < 4; i++) {
-            m_old[i] = m[i];
-            l_old[i] = l[i];
+            rM_old[i] = rM[i];
+            rL_old[i] = rL[i];
         }
 
         gK += kv_tile_increment;
@@ -499,7 +511,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     //rescale rO
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            rO[i][j] /= l[i];
+            rO[i][j] /= rL[i];
         }
     }
 
