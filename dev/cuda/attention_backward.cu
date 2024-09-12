@@ -323,7 +323,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 // so each threadblock computes 64 * 64 tile of O, and each warp does 8 * 64 tile of O
 // following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
 // idea: if we dont use shared memory to store
-    int thread_id = threadIdx.x;
+    //int thread_id = threadIdx.x;
     int warp_id = threadIdx.x / 32;
     int lane_id = threadIdx.x % 32;
 
@@ -369,7 +369,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rK[4];
     float rV[4];
     float tS[4][4] = {0.0f};
-    float (&tP)[4][4] = rS;
+    float (&tP)[4][4] = tS;
     float rP[4];
     float rO[4][4] = {0.0f};
     float rM_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
@@ -459,7 +459,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // compute l
 
         for (int i=0;i<4;i++) {
-            rL[i] = exp(rM_old[i] - rM[i]);
+            rL[i] = exp(rM_old[i] - rM[i]) * rL_old[i];
             for (int j=0;j<4;j++){
                 rL[i] += tP[i][j];
             }
