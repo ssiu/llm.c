@@ -511,7 +511,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     }
     // store rO to gO
     for (int i=0; i < 4; i++) {
-        for (j=0;j<4;j++) {
+        for (int j=0;j<4;j++) {
             gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
         }
     }
