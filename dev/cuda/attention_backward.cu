@@ -435,7 +435,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         //inter-warp reduction
         for (int i=0; i < 4; i++) {
             for (int offset = 8; offset > 0; offset /= 2) {
-               rM[i] = fmaxf(m[i], __shfl_down_sync(mask, rM[i], offset));
+               rM[i] = fmaxf(rM[i], __shfl_down_sync(mask, rM[i], offset));
             }
         }
         // now threads 0, 16 have the correct m[i],
@@ -518,7 +518,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // store l back to gL
     if (lane_id == 0 or lane_id == 16) {
         for (int i = 0; i < 4; i++) {
-            gL(warp_row + thread_row + i) = m[i] + logf(l[i]);
+            gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
         }
     }
     // store rO to gO
