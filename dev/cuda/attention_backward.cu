@@ -368,8 +368,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rQ[4];
     float rK[4];
     float rV[4];
-    float rS[4][4] = {0.0f};
-    float (&rP)[4][4] = rS;
+    float tS[4][4] = {0.0f};
+    float (&tP)[4][4] = rS;
+    float rP[4];
     float rO[4][4] = {0.0f};
     float rM_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
     float rM[4];
@@ -407,10 +408,10 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; i < 4; j++) {
                     if (blockIdx.y == T / T_r && warp_row + thread_row + i < thread_col + j) {
-                        rS[i][j] = rQ[i] * rK[j];
+                        tS[i][j] = rQ[i] * rK[j];
                     } else {
                         // apply casual mask
-                        rS[i][j] = -FLT_MAX;
+                        tS[i][j] = -FLT_MAX;
                     }
 
                 }
@@ -428,7 +429,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         for (int i = 0; i < 4; i++) {
             rM[i] = rM_old[i];
             for (int j = 0; j < 4;j++) {
-                rM[i] = fmaxf(rM[i], rS[i][j]);
+                rM[i] = fmaxf(rM[i], tS[i][j]);
             }
         }
 
@@ -451,7 +452,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++){
-                rP[i][j] = expf(rS[i][j] - rM[i]);
+                tP[i][j] = expf(tS[i][j] - rM[i]);
             }
         }
 
@@ -460,14 +461,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         for (int i=0;i<4;i++) {
             rL[i] = exp(rM_old[i] - rM[i]);
             for (int j=0;j<4;j++){
-                rL[i] += rP[i][j];
+                rL[i] += tP[i][j];
             }
         }
 
         //store to sP
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++) {
-                sP(warp_row + thread_row + i , thread_col + j ) = rP[i][j];
+                sP(warp_row + thread_row + i , thread_col + j ) = tP[i][j];
             }
         }
 
