@@ -364,6 +364,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 	    FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
     }
 
+    __syncthreads();
+
     // main loop
     float rQ[4];
     float rK[4];
@@ -380,8 +382,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // only need to check when kv_tile = blockIdx.y
     for (int kv_tile = 0; kv_tile <= blockIdx.y; kv_tile++) {
 
-
-
         // load gK to sK, need to first transpose
         float rK_shared[4];
         for (int i = 0; i < 4; i++) {
@@ -395,6 +395,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 	        FLOAT4(sV(warp_row + thread_row + i, thread_col)) = FLOAT4(gV(warp_row + thread_row + i, thread_col));
         }
 
+        __syncthreads();
         //
         // compute rS
         //
@@ -506,6 +507,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         gK += kv_tile_increment;
         gV += kv_tile_increment;
+        __syncthreads();
     }
 
 
