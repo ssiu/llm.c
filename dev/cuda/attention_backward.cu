@@ -527,6 +527,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             for (int j=0;j<4;j++){
                 rL[i] += tP[i][j];
             }
+            printf("i is %d, rL is %f", i, rL[i]);
         }
 
         //store to sP
@@ -544,7 +545,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // first rescale O by exp(m_old - m)
         for (int i=0; i<4; i++) {
             for (int j=0;j<4;j++) {
-                rO[i][j] = expf(rM[i] - rM_old[i]) * rO[i][j];
+                rO[i][j] = expf(rM_old[i] - rM[i]) * rO[i][j];
             }
         }
         // add PV to rO
