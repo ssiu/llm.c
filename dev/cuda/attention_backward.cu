@@ -442,7 +442,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                         // apply casual mask
                         tS[i][j] = -FLT_MAX;
                     }
-                    if (threadIdx.x ==0) {
+                    if (threadIdx.x ==0 and k_fragment==0) {
                         printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
                     }
                 }
