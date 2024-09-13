@@ -420,9 +420,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // compute rS
         //
         for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
-            for (int i = 0; i < 4; i++) {
-                printf("%f ", rQ[i]);
-            }
+//            for (int i = 0; i < 4; i++) {
+//                printf("%f ", rQ[i]);
+//            }
 
 
             for (int i = 0; i < 4; i++) {
