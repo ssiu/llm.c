@@ -519,7 +519,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // compute l
 
         for (int i=0;i<4;i++) {
-            rL[i] = exp(rM_old[i] - rM[i]) * rL_old[i];
+            rL[i] = expf(rM_old[i] - rM[i]) * rL_old[i];
             for (int j=0;j<4;j++){
                 rL[i] += tP[i][j];
             }
