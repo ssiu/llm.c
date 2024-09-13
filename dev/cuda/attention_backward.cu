@@ -483,7 +483,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             for (int j=0;j<4;j++){
                 tP[i][j] = expf(tS[i][j] - rM[i]);
                 if (threadIdx.x ==0) {
-                    printf("i = %d, j= %d, tP[i][j] = %f ", i, j, tP[i][j]);
+                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
                 }
             }
         }
