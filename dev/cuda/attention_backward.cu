@@ -494,6 +494,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
         }
 
+
+        if (threadIdx.x ==0) {
+            for (int i=0;i<4;i++) {
+                printf("m = %f \n", m[i]);
+            }
+
+        }
+
         //
         // compute P
         //
