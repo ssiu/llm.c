@@ -406,7 +406,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // load gK to sK, need to first transpose
         float rK_shared[4];
         for (int i = 0; i < 4; i++) {
-            FLOAT4(rK_shared[0]) = FLOAT4(gK(warp_row + thread_row , thread_col));
+            FLOAT4(rK_shared[0]) = FLOAT4(gK(warp_row + thread_row + i, thread_col));
             for (int j=0; j < 4; j++) {
                 sK(thread_col + j, warp_row + thread_row + i) = rK_shared[j];
             }
