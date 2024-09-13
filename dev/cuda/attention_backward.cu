@@ -373,7 +373,10 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 //        }
 //    }
 
+    if (threadIdx.x==62) {
+        printf("%f ", sQ(warp_row + thread_row, 0));
 
+    }
 
     __syncthreads();
 
@@ -414,10 +417,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         //
         for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
 
-            if (threadIdx.x==62) {
-                printf("%f ", sQ(warp_row + thread_row + 1, k_fragment));
 
-            }
             for (int i = 0; i < 4; i++) {
                 rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
                 //rQ[i] = 0;
