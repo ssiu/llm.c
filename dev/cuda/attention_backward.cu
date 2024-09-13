@@ -1282,7 +1282,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 
     int HS = C / NH; // head size
     dim3 dimGrid(NH, T, B);
-    dim3 dimBlock(1);
+    dim3 dimBlock(256);
     flash_attention_backward_kernel0<<<dimGrid, dimBlock>>>(dinp, inp, dout, out, l, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
