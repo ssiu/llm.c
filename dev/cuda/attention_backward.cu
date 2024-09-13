@@ -486,7 +486,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                     printf("i = %d, j= %d, tP[i][j] = %f ", i, j, tP[i][j]);
                 }
             }
-            printf("\n");
         }
 
         // compute l
