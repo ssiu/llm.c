@@ -381,15 +381,15 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     __syncthreads();
 
     // main loop
-    float rQ[4];
-    float rK[4];
-    float rV[4];
+    float rQ[4] = {0.0f};
+    float rK[4] = {0.0f};
+    float rV[4] = {0.0f};
     float tS[4][4] = {0.0f};
     float (&tP)[4][4] = tS;
-    float rP[4];
+    float rP[4] = {0.0f};
     float rO[4][4] = {0.0f};
     float rM_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
-    float rM[4];
+    float rM[4] = {0.0f};
     float rL_old[4] = {0.0f};
     float rL[4] = {0.0f};
     // now we need to put the auto regressive mask, what should it be
