@@ -427,6 +427,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
 
             for (int i = 0; i < 4; i++) {
+                print('address in sQ is %d', (warp_row + thread_row + i) * 64 + k_fragment);
                 rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
                 //rQ[i] = 0;
                 rK[i] = sK(k_fragment, thread_col + i);
@@ -1266,9 +1267,9 @@ void flash_attention_forward(float* out, float* inp, float* l,
     int HS = C / NH; // head size
     dim3 dimGrid(NH, T / 64, B);
     dim3 dimBlock(1);
-    int maxbytes = 65536;
-    cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
-    flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
+//    int maxbytes = 65536;
+//    cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
+//    flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 
