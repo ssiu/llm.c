@@ -364,14 +364,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 	    FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
     }
 
-    if (threadIdx.x==0) {
-        for (int i=0;i<64;i++) {
-            for (int j=0;j<64;j++) {
-                printf("%f ", sQ(i,j));
-            }
-            printf("\n");
-        }
-    }
+//    if (threadIdx.x==0) {
+//        for (int i=0;i<64;i++) {
+//            for (int j=0;j<64;j++) {
+//                printf("%f ", sQ(i,j));
+//            }
+//            printf("\n");
+//        }
+//    }
 
 
 
@@ -415,7 +415,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
 
             for (int i = 0; i < 4; i++) {
-                rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
+                //rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
+                rQ[i] = 0;
                 rK[i] = sK(k_fragment, thread_col + i);
             }
 
