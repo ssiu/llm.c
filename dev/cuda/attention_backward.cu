@@ -395,6 +395,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rM[4] = {0.0f};
     float rL_old[4] = {0.0f};
     float rL[4] = {0.0f};
+    // this stores sum(rP) across the half-warps
+    // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
+    float rD[4] = {0.0f};
 
 
     // now we need to put the auto regressive mask, what should it be
@@ -492,6 +495,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                rM[i] = fmaxf(rM[i], __shfl_down_sync(mask, rM[i], offset));
             }
         }
+
         // now threads 0, 16 have the correct m[i],
         // so we broadcast m back to the other lanes in the half warp
         for (int i=0; i<4; i++) {
@@ -520,21 +524,45 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-        // compute l
-
-        for (int i=0;i<4;i++) {
-            rL[i] = expf(rM_old[i] - rM[i]) * rL_old[i];
-            for (int j=0;j<4;j++){
-                rL[i] += tP[i][j];
-            }
-            printf("i is %d, rL is %f\n", i, rL[i]);
-        }
-
         //store to sP
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++) {
                 sP(warp_row + thread_row + i , thread_col + j ) = tP[i][j];
             }
+        }
+
+        //
+        // compute l
+        //
+
+        // rescale l  and also reset rD to 0
+        for (int i = 0; i < 4; i++) {
+            rL[i] = expf(rM_old[i] - rM[i]) * rL_old[i];
+            rD[i] = 0;
+        }
+
+        // inter-thread reduction
+        for (int i = 0; i < 4; i++) {
+            for (int j=0;j<4;j++){
+                rD[i] += tP[i][j];
+            }
+            printf("i is %d, rL is %f\n", i, rL[i]);
+        }
+
+        //inter-warp reduction
+        for (int i=0; i < 4; i++) {
+            for (int offset = 8; offset > 0; offset /= 2) {
+               rD[i] += __shfl_down_sync(mask, rD[i], offset);
+            }
+        }
+
+
+
+        // now threads 0, 16 have the correct rD[i],
+        // so we compute rL[i] and broadcast it back to the warp
+        for (int i=0; i<4; i++) {
+            rL[i] = rL[i] + rD[i];
+            rL[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
         }
 
 
