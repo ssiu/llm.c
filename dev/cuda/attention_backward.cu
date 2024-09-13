@@ -531,6 +531,17 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
+    //    print sQ
+        if (threadIdx.x==0) {
+            for (int i=0;i<64;i++) {
+                for (int j=0;j<64;j++) {
+                    printf("%.2f ", sP(i,j));
+                }
+                printf("\n");
+            }
+        }
+
+
         //
         // compute l
         //
@@ -567,10 +578,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
 
         }
-
-
-
-
 
         //
         // compute O
