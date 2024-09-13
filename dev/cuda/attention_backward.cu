@@ -546,7 +546,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             for (int j=0;j<4;j++){
                 rD[i] += tP[i][j];
             }
-            printf("i is %d, rL is %f\n", i, rL[i]);
         }
 
         //inter-warp reduction
@@ -563,7 +562,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         for (int i=0; i<4; i++) {
             rL[i] = rL[i] + rD[i];
             rL[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
+            if (threadIdx.x==0){
+            printf("k_fragment is %d, i is %d, rL is %f\n", k_fragment, i, rL[i]);
+            }
+
         }
+
+
+
 
 
         //
