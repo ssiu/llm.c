@@ -382,7 +382,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // only need to check when kv_tile = blockIdx.y
     for (int kv_tile = 0; kv_tile <= blockIdx.y; kv_tile++) {
         if (threadIdx.x==0) {
-            printf("HIHIHIHELO")
+            printf("HIHIHIHELO");
         }
         // load gK to sK, need to first transpose
         float rK_shared[4];
