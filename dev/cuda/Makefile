@@ -26,8 +26,6 @@ NVCCFLAGS = -lcublas -lcublasLt -std=c++17
 MPI_PATHS = -I/usr/lib/x86_64-linux-gnu/openmpi/include -L/usr/lib/x86_64-linux-gnu/openmpi/lib/
 
 
-.PHONY: attention_forward attention_backward
-
 # Default rule for our CUDA files
 %: %.cu
 	$(NVCC) $(CFLAGS) $(NVCCFLAGS) $< -o $@
