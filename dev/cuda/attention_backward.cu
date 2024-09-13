@@ -407,8 +407,11 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         float rK_shared[4];
         for (int i = 0; i < 4; i++) {
             FLOAT4(rK_shared[0]) = FLOAT4(gK(warp_row + thread_row + i, thread_col));
+
             for (int j=0; j < 4; j++) {
-                printf("i is %d, rK_shared is %f\n", j, rK_shared[j]);
+                if (i==0) {
+                    printf("j is %d, rK_shared is %f\n", j, rK_shared[j]);
+                }
                 sK(thread_col + j, warp_row + thread_row + i) = rK_shared[j];
             }
         }
