@@ -461,18 +461,28 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
-                    if (blockIdx.y == kv_tile && warp_row + thread_row + i < thread_col + j) {
-                        // apply casual mask
-                        tS[i][j] = -FLT_MAX;
-                    } else {
-                        tS[i][j] += rQ[i] * rK[j];
-                    }
-                    if (threadIdx.x ==0 and k_fragment==HS-1) {
+                    if (blockIdx.y == kv_tile && blockIdx.y == kv_tile && warp_row + thread_row + i < thread_col + j) {
+                            tS[i][j] = -FLT_MAX;
+                        } else {
+                            tS[i][j] += rQ[i] * rK[j];
+                        }
+
+                    if (threadIdx.x == 0 and k_fragment==HS-1) {
                         printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
                     }
                 }
             }
         }
+
+        //rescale preatt by 1/sqrt(HS)
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                if (tS[i][j] != -FLT_MAX) {
+                    tS[i][j] *= 1.0 / sqrtf(HS);
+                }
+            }
+        }
+
         //
         // compute m
         //
@@ -531,7 +541,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-    //    print sQ
+    //    print sP
         if (threadIdx.x==0) {
             for (int i=0;i<4;i++) {
                 for (int j=0;j<16;j++) {
@@ -1342,6 +1352,8 @@ void flash_attention_forward(float* out, float* inp, float* l,
 //    dim3 dimBlock(1);
 //    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
     //int T_r = 64;
+
+
     int HS = C / NH; // head size
     dim3 dimGrid(NH, T / 64, B);
     dim3 dimBlock(256);
