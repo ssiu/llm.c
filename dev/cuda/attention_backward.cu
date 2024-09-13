@@ -373,14 +373,15 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
     __syncthreads();
 
-    if (threadIdx.x==0) {
-        for (int i=0;i<64;i++) {
-            for (int j=0;j<64;j++) {
-                printf("%.2f ", sQ(i,j));
-            }
-            printf("\n");
-        }
-    }
+//print sQ
+//    if (threadIdx.x==0) {
+//        for (int i=0;i<64;i++) {
+//            for (int j=0;j<64;j++) {
+//                printf("%.2f ", sQ(i,j));
+//            }
+//            printf("\n");
+//        }
+//    }
 
     // main loop
     float rQ[4] = {0.0f};
