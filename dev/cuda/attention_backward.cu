@@ -563,7 +563,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             rL[i] = rL[i] + rD[i];
             rL[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
             if (threadIdx.x==0){
-            printf("k_fragment is %d, i is %d, rL is %f\n", k_fragment, i, rL[i]);
+                printf(" i is %d, rL is %f\n", i, rL[i]);
             }
 
         }
