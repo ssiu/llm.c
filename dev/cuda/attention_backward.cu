@@ -400,9 +400,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int kv_tile = 0; kv_tile <= blockIdx.y; kv_tile++) {
-        if (threadIdx.x==0) {
-            printf("HIHIHIHELO");
-        }
+//        if (threadIdx.x==0) {
+//            printf("HIHIHIHELO");
+//        }
         // load gK to sK, need to first transpose
         float rK_shared[4];
         for (int i = 0; i < 4; i++) {
@@ -427,7 +427,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
 
             for (int i = 0; i < 4; i++) {
-                printf("address in sQ is %d, sQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment));
+                printf("address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
                 //rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
                 //rQ[i] = 0;
                 rK[i] = sK(k_fragment, thread_col + i);
