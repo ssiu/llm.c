@@ -392,6 +392,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rM[4] = {0.0f};
     float rL_old[4] = {0.0f};
     float rL[4] = {0.0f};
+
+
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int kv_tile = 0; kv_tile <= blockIdx.y; kv_tile++) {
@@ -416,6 +418,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         // compute rS
         //
         for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
+            for (int i = 0; i < 4; i++) {
+                printf('%f ', rQ[i]);
+            }
 
 
             for (int i = 0; i < 4; i++) {
