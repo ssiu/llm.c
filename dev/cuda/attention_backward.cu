@@ -410,7 +410,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; i < 4; j++) {
-                    if (blockIdx.y == T / T_r && warp_row + thread_row + i < thread_col + j) {
+                    if (blockIdx.y == kv_tile && warp_row + thread_row + i < thread_col + j) {
                         tS[i][j] = rQ[i] * rK[j];
                     } else {
                         // apply casual mask
