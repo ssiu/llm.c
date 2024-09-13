@@ -367,9 +367,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     if (threadIdx.x==0) {
         for (int i=0;i<64;i++) {
             for (int j=0;j<64;j++) {
-                printf("%f ", sQ(i,j))
+                printf("%f ", sQ(i,j));
             }
-            print('\n')
+            print('\n');
         }
     }
 
