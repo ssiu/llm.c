@@ -412,6 +412,16 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
+
+
+
+        // load gV to sV
+        for (int i = 0; i < 4; i++) {
+	        FLOAT4(sV(warp_row + thread_row + i, thread_col)) = FLOAT4(gV(warp_row + thread_row + i, thread_col));
+        }
+
+        __syncthreads();
+
         if (threadIdx.x==0) {
             for (int i=0;i<64;i++) {
                 for (int j=0;j<64;j++) {
@@ -421,13 +431,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-
-        // load gV to sV
-        for (int i = 0; i < 4; i++) {
-	        FLOAT4(sV(warp_row + thread_row + i, thread_col)) = FLOAT4(gV(warp_row + thread_row + i, thread_col));
-        }
-
-        __syncthreads();
         //
         // compute rS
         //
