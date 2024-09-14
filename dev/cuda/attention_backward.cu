@@ -289,7 +289,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
     gL[0] = logf(d) + m;
 
     if (blockIdx.y >=0 && blockIdx.y <4) {
-        printf('i = %d, m[i] = %f\n', blockIdx.y, m);
+        printf("i = %d, m[i] = %f\n", blockIdx.y, m);
     }
 
     // write vaccum to global memory
