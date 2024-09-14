@@ -277,6 +277,10 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
             rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
+        //each block computes a single row of m
+        if (blockIdx.y >=64 && blockIdx.y < 72 && t == 64) {
+            printf("kernel 0: t = 64, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+        }
         //update constants
         m_old = m;
         d_old = d;
@@ -290,7 +294,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 
     //each block computes a single row of m
     if (blockIdx.y >=64 && blockIdx.y < 72) {
-        printf("kernel 0: i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+        printf("kernel 0: t = 128, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
     }
 
     // write vaccum to global memory
@@ -635,7 +639,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // print d when t = 64, ie after finishing the first block
     if (blockIdx.y == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
         for (int i=0;i<4;i++){
-            printf("kernel 1: i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
+            printf("kernel 1: t = 128, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
         }
 
     }
