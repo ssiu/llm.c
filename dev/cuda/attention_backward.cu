@@ -412,9 +412,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             FLOAT4(rK_shared[0]) = FLOAT4(gK(warp_row + thread_row + i, thread_col));
 
             for (int j=0; j < 4; j++) {
-                if (threadIdx.x ==0 && i==0) {
-                    printf("j is %d, rK_shared is %f\n", j, rK_shared[j]);
-                }
+//                if (threadIdx.x ==0 && i==0) {
+//                    printf("j is %d, rK_shared is %f\n", j, rK_shared[j]);
+//                }
                 sK(thread_col + j, warp_row + thread_row + i) = rK_shared[j];
             }
         }
@@ -429,14 +429,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         __syncthreads();
 
-        if (threadIdx.x==0) {
-            for (int i=0;i<64;i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%.2f ", sK(i,j));
-                }
-                printf("\n");
-            }
-        }
+//        if (threadIdx.x==0) {
+//            for (int i=0;i<64;i++) {
+//                for (int j=0;j<64;j++) {
+//                    printf("%.2f ", sK(i,j));
+//                }
+//                printf("\n");
+//            }
+//        }
 
         //
         // compute rS
@@ -454,9 +454,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                 //rQ[i] = 0;
                 rK[i] = sK(k_fragment, thread_col + i);
 
-                if (threadIdx.x ==0) {
-                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
-                }
+//                if (threadIdx.x ==0) {
+//                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
+//                }
             }
 
             for (int i = 0; i < 4; i++) {
@@ -467,9 +467,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                             tS[i][j] += rQ[i] * rK[j];
                         }
 
-                    if (threadIdx.x == 0 and k_fragment==HS-1) {
-                        printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
-                    }
+//                    if (threadIdx.x == 0 and k_fragment==HS-1) {
+//                        printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
+//                    }
                 }
             }
         }
@@ -512,13 +512,13 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
         }
 
-
-        if (threadIdx.x ==0) {
-            for (int i=0;i<4;i++) {
-                printf("m = %f \n", rM[i]);
-            }
-
-        }
+//
+//        if (threadIdx.x ==0) {
+//            for (int i=0;i<4;i++) {
+//                printf("m = %f \n", rM[i]);
+//            }
+//
+//        }
 
         //
         // compute P
@@ -528,9 +528,9 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++){
                 tP[i][j] = expf(tS[i][j] - rM[i]);
-                if (threadIdx.x ==0) {
-                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
-                }
+//                if (threadIdx.x ==0) {
+//                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
+//                }
             }
         }
 
@@ -542,14 +542,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         }
 
     //    print sP
-        if (threadIdx.x==0) {
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<16;j++) {
-                    printf("%.2f ", sP(i,j));
-                }
-                printf("\n");
-            }
-        }
+//        if (threadIdx.x==0) {
+//            for (int i=0;i<4;i++) {
+//                for (int j=0;j<16;j++) {
+//                    printf("%.2f ", sP(i,j));
+//                }
+//                printf("\n");
+//            }
+//        }
 
 
         //
