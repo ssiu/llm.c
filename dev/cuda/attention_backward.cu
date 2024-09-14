@@ -635,7 +635,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // print d when t = 64, ie after finishing the first block
     if (blockIdx.y == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
         for (int i=0;i<4;i++){
-            printf("kernel 1: i = %d, m[i] = %f, l[i] = %f\n", (threadIdx / 16) * 4 + i + 64, rM[i], rL[i]);
+            printf("kernel 1: i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
         }
 
     }
