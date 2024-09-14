@@ -288,8 +288,9 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 
     gL[0] = logf(d) + m;
 
-    if (blockIdx.y >=0 && blockIdx.y <4) {
-        printf("i = %d, m[i] = %f\n", blockIdx.y, m);
+    //each block computes a single row of m
+    if (blockIdx.y >=0 && blockIdx.y < 4) {
+        printf("kernel 0: i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
     }
 
     // write vaccum to global memory
@@ -629,6 +630,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         __syncthreads();
     }
 
+    //each block compute 64 rows of o
+    //each warp computes 8 rows, total 8 warps = 256 threads
+    if (blockIdx.y == 0 && threadIdx.x == 0){
+        for (int i=0;i<4;i++){
+            printf("kernel 1: i = %d, m[i] = %f, l[i] = %f\n", i, rM[i], rL[i]);
+        }
+
+    }
 
     //rescale rO
     for (int i = 0; i < 4; i++) {
