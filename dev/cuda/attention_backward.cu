@@ -1347,11 +1347,11 @@ void flash_attention_forward(float* out, float* inp, float* l,
     // inp is (B, T, 3, NH, HS)
     // out is (B, T, NH, HS)
     // l is (B, T, NH)
-//    int HS = C / NH; // head size
-//    dim3 dimGrid(NH, T, B);
-//    dim3 dimBlock(1);
-//    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
-    //int T_r = 64;
+    int HS = C / NH; // head size
+    dim3 dimGrid(NH, T, B);
+    dim3 dimBlock(1);
+    flash_attention_forward_kernel0<<<dimGrid, dimBlock>>>(out, inp, l, B, T, NH, HS);
+//    int T_r = 64;
 
 
     int HS = C / NH; // head size
