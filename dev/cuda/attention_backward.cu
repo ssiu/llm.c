@@ -1644,7 +1644,7 @@ int main(int argc, char **argv) {
 //    int C = 768;
 //    int NH = 12;
     int B = 1;
-    int T = 1024;
+    int T = 128;
     int C = 64;
     int NH = 1;
 
