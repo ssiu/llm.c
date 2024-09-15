@@ -605,16 +605,18 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         __syncthreads();
         //    print sP
-        if (threadIdx.x==0 && blockIdx.y == 1 && kv_tile == 1) {
-            for (int i=0;i<8;i++) {
-                for (int j=0;j<10;j++) {
-                    printf("%f ", sP(i,j));
-                }
-                printf("\n");
-            }
+//        if (threadIdx.x==0 && blockIdx.y == 1 && kv_tile == 1) {
+//            for (int i=0;i<8;i++) {
+//                for (int j=0;j<10;j++) {
+//                    printf("%f ", sP(i,j));
+//                }
+//                printf("\n");
+//            }
+//        }
+
+        if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
+            printf("kernel 1:  m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", rM[0], rM_old[0], rL[0], rL_old[0], tP[0][0]);
         }
-
-
 
         //
         // compute O
@@ -641,20 +643,20 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-        if (blockIdx.y == 1 && kv_tile == 0 && (threadIdx.x == 0 || threadIdx.x == 16)){
-            for (int i=0;i<4;i++){
-                printf("kernel 1: t = 63, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
-            }
-        }
+//        if (blockIdx.y == 1 && kv_tile == 0 && (threadIdx.x == 0 || threadIdx.x == 16)){
+//            for (int i=0;i<4;i++){
+//                printf("kernel 1: t = 63, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
+//            }
+//        }
 
         //each block compute 64 rows of o
     //each warp computes 8 rows, total 8 warps = 256 threads
     // print d when t = 64, ie after finishing the first block
-        if (blockIdx.y == 1 && kv_tile == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
-            for (int i=0;i<4;i++){
-                printf("kernel 1: t = 127, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
-            }
-        }
+//        if (blockIdx.y == 1 && kv_tile == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
+//            for (int i=0;i<4;i++){
+//                printf("kernel 1: t = 127, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
+//            }
+//        }
 
 
         // update m and l
