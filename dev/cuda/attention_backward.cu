@@ -1329,20 +1329,13 @@ void flash_attention_forward(float* out, float* inp, float* l,
     flash_attention_forward_kernel0<<<dimGrid1, dimBlock1>>>(out, inp, l, B, T, NH, HS);
 //    int T_r = 64;
 
-    printf("%f\n", l[0]);
+    int HS = C / NH; // head size
+    dim3 dimGrid(NH, T / 64, B);
+    dim3 dimBlock(256);
+    int maxbytes = 65536;
+    cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
+    flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
 
- //   int HS = C / NH; // head size
-//    dim3 dimGrid(NH, T / 64, B);
-//    dim3 dimBlock(256);
-//    int maxbytes = 65536;
-//    cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
-//    flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
-
-
-//    for (int i=0;i<T;i++) {
-//        printf("i = %d, %f ", i, l[i]);
-//        printf("\n");
-//    }
 
     cudaCheck(cudaGetLastError());
 
