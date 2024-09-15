@@ -611,7 +611,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     }
 
     // store l back to gL
-    if (lane_id == 0 or lane_id == 16) {
+    if (lane_id == 0 || lane_id == 16) {
         for (int i = 0; i < 4; i++) {
             gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
         }
