@@ -381,24 +381,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 	    FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
     }
 
-
-
-//    if (threadIdx.x==62) {
-//        printf("%f ", sQ(warp_row + thread_row, 0));
-//
-//    }
-
     __syncthreads();
-
-//print sQ
-//    if (threadIdx.x==0) {
-//        for (int i=0;i<64;i++) {
-//            for (int j=0;j<64;j++) {
-//                printf("%.2f ", sQ(i,j));
-//            }
-//            printf("\n");
-//        }
-//    }
 
     // main loop
     float rQ[4] = {0.0f};
@@ -505,7 +488,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-
         //
         // compute m
         //
@@ -538,8 +520,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         //
         // compute P
         //
-
-
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++){
                 tP[i][j] = expf(tS[i][j] - rM[i]);
@@ -623,7 +603,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     }
 
 
-
     //rescale rO
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -643,7 +622,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
         }
     }
-
 
 }
 
@@ -1642,7 +1620,7 @@ int main(int argc, char **argv) {
 //    int C = 768;
 //    int NH = 12;
     int B = 1;
-    int T = 128;
+    int T = 64;
 //    int C = 768;
 //    int NH = 12;
     int C = 64;
