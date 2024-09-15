@@ -284,6 +284,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
         //each block computes a single row of m
         if (blockIdx.y >=64 && blockIdx.y < 72 && t == 127) {
             printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+
         }
 
         //update constants
