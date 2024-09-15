@@ -282,10 +282,10 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
             printf("kernel 0: t = 63, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
         }
 //        //each block computes a single row of m
-//        if (blockIdx.y >=64 && blockIdx.y < 72 && t == blockIdx.y) {
-//            printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
-//
-//        }
+        if (blockIdx.y >=64 && blockIdx.y < 72 && t == blockIdx.y) {
+            printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+
+        }
 
         //update constants
         m_old = m;
@@ -635,11 +635,11 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         //each block compute 64 rows of o
     //each warp computes 8 rows, total 8 warps = 256 threads
     // print d when t = 64, ie after finishing the first block
-//        if (blockIdx.y == 1 && kv_tile == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
-//            for (int i=0;i<4;i++){
-//                printf("kernel 1: t = 128, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
-//            }
-//        }
+        if (blockIdx.y == 1 && kv_tile == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
+            for (int i=0;i<4;i++){
+                printf("kernel 1: t = 128, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
+            }
+        }
 
 
         // update m and l
