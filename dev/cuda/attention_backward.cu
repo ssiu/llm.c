@@ -303,7 +303,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 
     gL[0] = logf(d) + m;
     if (blockIdx.y >= 64 && blockIdx.y <68){
-        printf("kernel 0: i = %d, l = %d\n", blockIdx.y, logf(d) + m);
+        printf("kernel 0: i = %d, l = %f\n", blockIdx.y, logf(d) + m);
     }
 
 
@@ -614,7 +614,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
     if (blockIdx.y == 1 && threadIdx.x == 0) {
         for (int i=0;i<4;i++) {
-            printf("kernel 1: i = %d, l = %d\n", i, rM[i] + logf(rL[i]));
+            printf("kernel 1: i = %d, l = %f\n", i, rM[i] + logf(rL[i]));
         }
 
 
