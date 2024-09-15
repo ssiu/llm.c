@@ -278,19 +278,23 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
         }
 
         //print sP
-        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 64) {
-            printf("kernel 0: t = 64, i = %d, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", blockIdx.y, x, m, m_old, d, d_old, expf(x-m));
+        if (blockIdx.y ==64 && t == 64) {
+            printf("kernel 0: t = %d, i = %d, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", t, blockIdx.y, x, m, m_old, d, d_old, expf(x-m));
         }
+
+//        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 64) {
+//            printf("kernel 0: t = 64, i = %d, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", blockIdx.y, x, m, m_old, d, d_old, expf(x-m));
+//        }
 
         //each block computes a single row of m
-        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 63) {
-            printf("kernel 0: t = 63, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
-        }
-//        //each block computes a single row of m
-        if (blockIdx.y >= 64 && blockIdx.y < 68 && t == blockIdx.y) {
-            printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
-
-        }
+//        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 63) {
+//            printf("kernel 0: t = 63, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+//        }
+////        //each block computes a single row of m
+//        if (blockIdx.y >= 64 && blockIdx.y < 68 && t == blockIdx.y) {
+//            printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+//
+//        }
 
         //update constants
         m_old = m;
