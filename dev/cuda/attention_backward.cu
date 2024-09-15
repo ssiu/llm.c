@@ -277,6 +277,11 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
             rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
+        if (blockIdx.y ==64 && t == 64) {
+            for (i=0; i <HS; i++) {
+                    printf("i = %d, sQ[i] = %f, sK[i] = %f", i, gQ[i], gK[i]);
+            }
+        }
         //print sP
         if (blockIdx.y ==64 && t == 64) {
             printf("kernel 0: t = %d, i = %d, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", t, blockIdx.y, x, m, m_old, d, d_old, expf(x-m));
@@ -615,7 +620,11 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 //                printf("\n");
 //            }
 //        }
-
+        if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
+            for (i=0; i <HS; i++) {
+                printf("i = %d, sQ[i] = %f, sK[i] = %f", i, sQ(0, i), sK(i,0));
+            }
+        }
         if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
             printf("kernel 1: t = 64, i = 64, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", tS[0][0], rM[0], rM_old[0], rL[0], rL_old[0], tP[0][0]);
         }
