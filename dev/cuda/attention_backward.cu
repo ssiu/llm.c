@@ -277,18 +277,6 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
             rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
-        if (blockIdx.y ==64 && t == 64) {
-            float y = 0;
-            for (int i=0; i <HS; i++) {
-                y += gQ[i] * gK[i];
-                //printf("i = %d, sQ[i] = %f, sK[i] = %f\n", i, gQ[i], gK[i]);
-            }
-            printf("x = %f, rescale = %f\n", y, y * 1.0 / sqrtf(HS));
-        }
-        //print sP
-        if (blockIdx.y ==64 && t == 64) {
-            printf("kernel 0: t = %d, i = %d, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", t, blockIdx.y, x, m, m_old, d, d_old, expf(x-m));
-        }
 
 //        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 64) {
 //            printf("kernel 0: t = 64, i = %d, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", blockIdx.y, x, m, m_old, d, d_old, expf(x-m));
