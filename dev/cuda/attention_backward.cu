@@ -409,7 +409,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rK[4] = {0.0f};
     float rV[4] = {0.0f};
     float tS[4][4] = {0.0f};
-    float (&tP)[4][4] = tS;
+    //float (&tP)[4][4] = tS;
+    float tP[4][4] = {0.0f};
     float rP[4] = {0.0f};
     float rO[4][4] = {0.0f};
     float rM_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
@@ -503,6 +504,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                 }
             }
         }
+
 
         //
         // compute m
@@ -615,7 +617,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 //        }
 
         if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
-            printf("kernel 1:  t = 64, i=64, x = ???????, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", rM[0], rM_old[0], rL[0], rL_old[0], tP[0][0]);
+            printf("kernel 1: t = 64, i = 64, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", tS[0][0], rM[0], rM_old[0], rL[0], rL_old[0], tP[0][0]);
         }
 
         //
