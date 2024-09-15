@@ -601,6 +601,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         }
 
+
+        __syncthreads();
         //
         // compute O
         //
