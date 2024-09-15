@@ -283,7 +283,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
                 y += gQ[i] * gK[i];
                 //printf("i = %d, sQ[i] = %f, sK[i] = %f\n", i, gQ[i], gK[i]);
             }
-            printf("x = %f, rescale = \n", y, y * 1/sqrt(HS));
+            printf("x = %f, rescale = \n", y, y * 1.0f/sqrt(HS));
         }
         //print sP
         if (blockIdx.y ==64 && t == 64) {
@@ -629,7 +629,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                 y += sQ(0, i) * sK(i,0);
                 //printf("i = %d, sQ[i] = %f, sK[i] = %f\n", i, sQ(0, i), sK(i,0));
             }
-           printf("x = %f, rescale = \n", y, y * 1/sqrt(HS));
+           printf("x = %f, rescale = \n", y, y * 1.0f/sqrt(HS));
         }
         if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
             printf("kernel 1: t = 64, i = 64, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", tS[0][0], rM[0], rM_old[0], rL[0], rL_old[0], tP[0][0]);
