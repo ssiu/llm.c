@@ -1338,10 +1338,7 @@ void flash_attention_forward(float* out, float* inp, float* l,
     flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
 
     for (int i=0;i<T;i++) {
-        printf("i = %d, ", i);
-        for (int j=0; j< HS; j++) {
-            printf("%f ", l[i * T + j]);
-        }
+        printf("i = %d, %f ", i, l[i]);
         printf("\n");
     }
 
