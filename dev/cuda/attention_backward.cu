@@ -278,8 +278,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
         }
 
         if (blockIdx.y ==64 && t == 64) {
-            for (i=0; i <HS; i++) {
-                    printf("i = %d, sQ[i] = %f, sK[i] = %f", i, gQ[i], gK[i]);
+            for (int i=0; i <HS; i++) {
+                    printf("i = %d, sQ[i] = %f, sK[i] = %f\n", i, gQ[i], gK[i]);
             }
         }
         //print sP
@@ -621,7 +621,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 //            }
 //        }
         if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
-            for (i=0; i <HS; i++) {
+            for (int i=0; i <HS; i++) {
                 printf("i = %d, sQ[i] = %f, sK[i] = %f", i, sQ(0, i), sK(i,0));
             }
         }
