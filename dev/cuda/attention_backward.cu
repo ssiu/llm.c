@@ -477,7 +477,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                rS[i][j] = 0;
+                tS[i][j] = 0;
             }
         }
 
