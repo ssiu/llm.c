@@ -1342,7 +1342,7 @@ void flash_attention_forward(float* out, float* inp, float* l,
         for (int j=0; j< HS; j++) {
             printf("%f ", l[i * T + j]);
         }
-        printf("\n")
+        printf("\n");
     }
 
     cudaCheck(cudaGetLastError());
