@@ -553,15 +553,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-    //    print sP
-//        if (threadIdx.x==0) {
-//            for (int i=0;i<4;i++) {
-//                for (int j=0;j<16;j++) {
-//                    printf("%.2f ", sP(i,j));
-//                }
-//                printf("\n");
-//            }
-//        }
+
 
 
         //
@@ -603,6 +595,18 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 
 
         __syncthreads();
+        //    print sP
+        if (threadIdx.x==0 && blockIdx.y == 1 && kv_tile == 1) {
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<16;j++) {
+                    printf("%.2f ", sP(i,j));
+                }
+                printf("\n");
+            }
+        }
+
+
+
         //
         // compute O
         //
