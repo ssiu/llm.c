@@ -1337,6 +1337,14 @@ void flash_attention_forward(float* out, float* inp, float* l,
     cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
     flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
 
+    for (i=0;i<T;i++) {
+        printf("i = %d, ", i);
+        for (int j=0; j< HS; j++) {
+            printf("%f ", l[i * T + j]);
+        }
+        printf("\n")
+    }
+
     cudaCheck(cudaGetLastError());
 
 }
