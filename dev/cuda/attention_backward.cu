@@ -471,6 +471,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         //
         // compute rS
         //
+        printf("kv tile is %d, tS[0][0] is %d\n", kv_tile, tS[0][0]);
         for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
 //            for (int i = 0; i < 4; i++) {
 //                printf("%f ", rQ[i]);
