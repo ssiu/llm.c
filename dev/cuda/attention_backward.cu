@@ -429,7 +429,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
     float rD[4] = {0.0f};
 
-
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int kv_tile = 0; kv_tile <= blockIdx.y; kv_tile++) {
@@ -448,9 +447,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                 sK(thread_col + j, warp_row + thread_row + i) = rK_shared[j];
             }
         }
-
-
-
 
         // load gV to sV
         for (int i = 0; i < 4; i++) {
@@ -471,9 +467,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         //
         // compute rS
         //
-        if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
-            printf("kv tile is %d, tS[0][0] is %f\n", kv_tile, tS[0][0]);
-        }
 
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
@@ -554,14 +547,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
         }
 
-//
-//        if (threadIdx.x ==0) {
-//            for (int i=0;i<4;i++) {
-//                printf("m = %f \n", rM[i]);
-//            }
-//
-//        }
-
         //
         // compute P
         //
@@ -570,9 +555,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++){
                 tP[i][j] = expf(tS[i][j] - rM[i]);
-//                if (threadIdx.x ==0) {
-//                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
-//                }
             }
         }
 
@@ -582,9 +564,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                 sP(warp_row + thread_row + i , thread_col + j) = tP[i][j];
             }
         }
-
-
-
 
         //
         // compute l
@@ -610,41 +589,14 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             }
         }
 
-
-
         // now threads 0, 16 have the correct rD[i],
         // so we compute rL[i] and broadcast it back to the warp
         for (int i=0; i<4; i++) {
             rL[i] += rD[i];
             rL[i] = __shfl_sync(mask, rL[i], thread_id_to_read_from);
-//            if (threadIdx.x==0){
-//                printf("i is %d, rD is %f, rL is %f\n", i, rD[i], rL[i]);
-//            }
-
         }
-
 
         __syncthreads();
-        //    print sP
-//        if (threadIdx.x==0 && blockIdx.y == 1 && kv_tile == 1) {
-//            for (int i=0;i<8;i++) {
-//                for (int j=0;j<10;j++) {
-//                    printf("%f ", sP(i,j));
-//                }
-//                printf("\n");
-//            }
-//        }
-        if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
-            float y = 0;
-            for (int i=0; i <HS; i++) {
-                y += sQ(0, i) * sK(i,0);
-                //printf("i = %d, sQ[i] = %f, sK[i] = %f\n", i, sQ(0, i), sK(i,0));
-            }
-           printf("x = %f, rescale = %f\n", y, y * 1.0 / sqrtf(HS));
-        }
-        if (blockIdx.y == 1 && kv_tile == 1 && threadIdx.x == 0){
-            printf("kernel 1: t = 64, i = 64, x = %f, m = %f, m_old = %f, l = %f, l_old = %f,  p = %f\n", tS[0][0], rM[0], rM_old[0], rL[0], rL_old[0], tP[0][0]);
-        }
 
         //
         // compute O
@@ -670,22 +622,6 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
                 }
             }
         }
-
-//        if (blockIdx.y == 1 && kv_tile == 0 && (threadIdx.x == 0 || threadIdx.x == 16)){
-//            for (int i=0;i<4;i++){
-//                printf("kernel 1: t = 63, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
-//            }
-//        }
-
-        //each block compute 64 rows of o
-    //each warp computes 8 rows, total 8 warps = 256 threads
-    // print d when t = 64, ie after finishing the first block
-//        if (blockIdx.y == 1 && kv_tile == 1 && (threadIdx.x == 0 || threadIdx.x == 16)){
-//            for (int i=0;i<4;i++){
-//                printf("kernel 1: t = 127, i = %d, m[i] = %f, l[i] = %f\n", (threadIdx.x / 16) * 4 + i + 64, rM[i], rL[i]);
-//            }
-//        }
-
 
         // update m and l
         for (int i = 0; i < 4; i++) {
