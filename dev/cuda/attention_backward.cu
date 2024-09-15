@@ -475,6 +475,12 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
             printf("kv tile is %d, tS[0][0] is %f\n", kv_tile, tS[0][0]);
         }
 
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                rS[i][j] = 0;
+            }
+        }
+
         for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
 //            for (int i = 0; i < 4; i++) {
 //                printf("%f ", rQ[i]);
@@ -492,6 +498,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
 //                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
 //                }
             }
+
 
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
