@@ -1620,7 +1620,7 @@ int main(int argc, char **argv) {
 //    int C = 768;
 //    int NH = 12;
     int B = 1;
-    int T = 64;
+    int T = 128;
 //    int C = 768;
 //    int NH = 12;
     int C = 64;
