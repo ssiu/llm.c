@@ -281,6 +281,11 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
         if (blockIdx.y >=64 && blockIdx.y < 72 && t == 63) {
             printf("kernel 0: t = 63, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
         }
+        //each block computes a single row of m
+        if (blockIdx.y >=64 && blockIdx.y < 72) {
+            printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
+        }
+
         //update constants
         m_old = m;
         d_old = d;
@@ -292,10 +297,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 
     gL[0] = logf(d) + m;
 
-    //each block computes a single row of m
-    if (blockIdx.y >=64 && blockIdx.y < 72) {
-        printf("kernel 0: t = 128, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
-    }
+
 
     // write vaccum to global memory
     for (int i=0; i < HS; i++){
