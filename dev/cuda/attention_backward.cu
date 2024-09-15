@@ -277,12 +277,17 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
             rO[i] = expf(m_old - m) * d_old/d * rO[i] + expf(x-m)/d * gV[i];
         }
 
+        //print sP
+        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 64) {
+            printf("kernel 0: t = 64, i = %d, d = %f\n", blockIdx.y, m, d, expf(x-m));
+        }
+
         //each block computes a single row of m
-        if (blockIdx.y >=64 && blockIdx.y < 72 && t == 63) {
+        if (blockIdx.y >=64 && blockIdx.y < 68 && t == 63) {
             printf("kernel 0: t = 63, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
         }
 //        //each block computes a single row of m
-        if (blockIdx.y >=64 && blockIdx.y < 72 && t == blockIdx.y) {
+        if (blockIdx.y >= 64 && blockIdx.y < 68 && t == blockIdx.y) {
             printf("kernel 0: t = 127, i = %d, m[i] = %f, l[i] = %f\n", blockIdx.y, m, d);
 
         }
