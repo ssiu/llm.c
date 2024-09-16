@@ -262,7 +262,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 //                printf("t = %d, k is %f\n", t, gK[i]);
             x += rQ[i] * gK[i];
         }
-        x *= 1.0 / sqrtf(HS);
+        x *= 1.0f / sqrtf(HS);
         // compute m_i
         m = fmaxf(m_old, x);
 
@@ -487,7 +487,7 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 if (tS[i][j] != -FLT_MAX) {
-                    tS[i][j] *= 1.0 / sqrtf(HS);
+                    tS[i][j] *= 1.0f / sqrtf(HS);
                 }
             }
         }
