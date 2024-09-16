@@ -351,7 +351,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     int k_global_offset = blockIdx.z * T * 3 * NH * HS +                0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
     int v_global_offset = blockIdx.z * T * 3 * NH * HS +                0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * T_r * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int l_global_offset = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+    int l_global_offset = blockIdx.z * T * NH + blockIdx.y * T_r * NH + blockIdx.x;
 
     float* gQ = &inp[q_global_offset];
     float* gK = &inp[k_global_offset];
