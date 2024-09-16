@@ -1626,7 +1626,7 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-    int B = 1;
+    int B = 4;
     int T = 1024;
     int C = 768;
     int NH = 12;
