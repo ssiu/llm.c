@@ -303,7 +303,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 
     gL[0] = logf(d) + m;
 
-    printf("kernel 0: i = %d, l = %f\n", blockIdx.y, logf(d) + m);
+    printf("kernel 0: address = %d, i = %d, l = %f\n", l_offset, blockIdx.y, logf(d) + m);
 
 
 
@@ -311,6 +311,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
     for (int i=0; i < HS; i++){
 //        if (blockIdx.y == 1)
 //            printf("o is %f\n", rO[i]);
+
         gO[i] = rO[i];
     }
 
@@ -612,14 +613,15 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
         }
     }
 
-    if (lane_id == 0 || lane_id == 16) {
-        for (int i=0;i<4;i++) {
-            printf("kernel 1: i = %d, l = %f\n", blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
-        }
-    }
+//    if (lane_id == 0 || lane_id == 16) {
+//        for (int i=0;i<4;i++) {
+//            printf("kernel 1: i = %d, l = %f\n", blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
+//        }
+//    }
     // store l back to gL
     if (lane_id == 0 || lane_id == 16) {
         for (int i = 0; i < 4; i++) {
+            printf("kernel 1: address = %d, i = %d, l = %f\n", l_global_offset + (warp_row + thread_row + i) * NH, blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
             gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
         }
     }
