@@ -328,7 +328,8 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 #define sV(i,j) sV[(i) * HS + (j)]
 #define sP(i,j) sP[(i) * HS + (j)]
 #define FLOAT4(addr) reinterpret_cast<float4*>(&(addr))[0]
-__global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
+__global__ __launch_bounds__(256)
+void flash_attention_forward_kernel1(float* out, float* inp, float* l,
                                 int B, int T, int NH, int HS) {
 // blockDim.x = NH
 // blockDim.y = T
