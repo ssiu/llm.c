@@ -391,8 +391,8 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     float rK[4] = {0.0f};
     float rV[4] = {0.0f};
     float tS[4][4] = {0.0f};
-    //float (&tP)[4][4] = tS;
-    float tP[4][4] = {0.0f};
+    float (&tP)[4][4] = tS;
+    //float tP[4][4] = {0.0f};
     float rP[4] = {0.0f};
     float rO[4][4] = {0.0f};
     float rM_old[4] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
