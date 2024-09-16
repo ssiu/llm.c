@@ -303,7 +303,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 
     gL[0] = logf(d) + m;
 
-    printf("kernel 0: address = %d, i = %d, l = %f\n", l_offset, blockIdx.y, logf(d) + m);
+    //printf("kernel 0: address = %d, i = %d, l = %f\n", l_offset, blockIdx.y, logf(d) + m);
 
 
 
@@ -621,7 +621,7 @@ __global__ void flash_attention_forward_kernel1(float* out, float* inp, float* l
     // store l back to gL
     if (lane_id == 0 || lane_id == 16) {
         for (int i = 0; i < 4; i++) {
-            printf("kernel 1: address = %d, i = %d, l = %f\n", l_global_offset + (warp_row + thread_row + i) * NH, blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
+            //printf("kernel 1: address = %d, i = %d, l = %f\n", l_global_offset + (warp_row + thread_row + i) * NH, blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
             gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
         }
     }
@@ -1333,13 +1333,13 @@ void flash_attention_forward(float* out, float* inp, float* l,
     // inp is (B, T, 3, NH, HS)
     // out is (B, T, NH, HS)
     // l is (B, T, NH)
-    int HS = C / NH; // head size
-    dim3 dimGrid1(NH, T, B);
-    dim3 dimBlock1(1);
-    flash_attention_forward_kernel0<<<dimGrid1, dimBlock1>>>(out, inp, l, B, T, NH, HS);
+//    int HS = C / NH; // head size
+//    dim3 dimGrid1(NH, T, B);
+//    dim3 dimBlock1(1);
+//    flash_attention_forward_kernel0<<<dimGrid1, dimBlock1>>>(out, inp, l, B, T, NH, HS);
 //    int T_r = 64;
 
-    //int HS = C / NH; // head size
+    int HS = C / NH; // head size
 
     dim3 dimGrid(NH, T / 64, B);
     dim3 dimBlock(256);
@@ -1709,10 +1709,10 @@ int main(int argc, char **argv) {
 
 
     // call backward() on the GPU
-//    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
-//                       d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
-//                       B, T, C, NH, block_size);
-    flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
+    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
+                       d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
+                       B, T, C, NH, block_size);
+   // flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
 
 //    for (int i=0; i <  B * T * 3 * C; i++) {
 //        printf("i = %d, cpu = %f\n", i, dinp[i], d_dinp[i]);
