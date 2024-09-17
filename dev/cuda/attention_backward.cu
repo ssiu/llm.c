@@ -890,25 +890,49 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
             }
         }
         // add PV to rO
-        for (int k_fragment = 0; k_fragment < 64; k_fragment++) {
+//        for (int k_fragment = 0; k_fragment < 64; k_fragment++) {
+//
+//            for (int i=0; i<4; i++) {
+//                // which thread
+//                // (lane_id / 16) * 16  + k_fragment / 4
+//                // which i in tP
+//                // i
+//                // which j in tP
+//                // k_fragment % 4
+//                rP[i] = __shfl_sync(mask, tP[i][k_fragment % 4], (lane_id >> 4) * 16  + (k_fragment >> 2));
+//                rV[i] = sV(k_fragment, thread_col + i);
+//            }
+//
+//            for (int i = 0; i < 4; i++) {
+//                for (int j = 0; j < 4; j++) {
+//                    rO[i][j] += rP[i] * rV[j];
+//                }
+//            }
+//        }
+        for (int l = 0; l < 16; l++) {
 
-            for (int i=0; i<4; i++) {
-                // which thread
-                // (lane_id / 16) * 16  + k_fragment / 4
-                // which i in tP
-                // i
-                // which j in tP
-                // k_fragment % 4
-                rP[i] = __shfl_sync(mask, tP[i][k_fragment % 4], (lane_id >> 4) * 16  + (k_fragment >> 2));
-                rV[i] = sV(k_fragment, thread_col + i);
-            }
-
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 4; j++) {
-                    rO[i][j] += rP[i] * rV[j];
+            for (int k=0; k < 4; k++) {
+                for (int i=0; i<4; i++) {
+                    // which thread
+                    // (lane_id / 16) * 16  + k_fragment / 4
+                    // which i in tP
+                    // i
+                    // which j in tP
+                    // k_fragment % 4
+                    rP[i] = __shfl_sync(mask, tP[i][k], (lane_id >> 4) * 16  + ((l*4 + k) >> 2));
+                    rV[i] = sV(k_fragment, thread_col + i);
                 }
+
+                for (int i = 0; i < 4; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        rO[i][j] += rP[i] * rV[j];
+                    }
+                }
+
             }
+
         }
+
 
         // update m and l
         for (int i = 0; i < 4; i++) {
