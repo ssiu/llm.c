@@ -648,7 +648,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 // l is (B, T, NH)
 
 // we use 256 threads = 8 warps in each threadblock
-// we use 64KB of shared memory for Q, K, V, P so each uses 16KB of shared memory
+// we use 64KB of shared memory for Q, K, V so each uses 16KB of shared memory
 // 16KB of shared memory can store 16*1024/4 = 4096 floats = 64 * 64 floats
 // so each threadblock computes 64 * 64 tile of O, and each warp does 8 * 64 tile of O
 // following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
@@ -900,12 +900,6 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
                 // which j in tP
                 // k_fragment % 4
                 rP[i] = __shfl_sync(mask, tP[i][k_fragment % 4], (lane_id >> 4) * 16  + (k_fragment >> 2));
-//                if (threadIdx.x == 0) {
-//                    printf("k_fragment = %d, k_fragment % 4 = %d, lane_id >> 4) * 16  + (k_fragment >> 2) = %d\n", k_fragment, k_fragment % 4, (lane_id >> 4) * 16  + (k_fragment >> 2));
-//
-//                }
-                //rP[i] = sP(warp_row + thread_row + i, k_fragment);
-
                 rV[i] = sV(k_fragment, thread_col + i);
             }
 
@@ -1665,11 +1659,15 @@ void flash_attention_forward(float* out, float* inp, float* l,
 
     int HS = C / NH; // head size
 
-    dim3 dimGrid(NH, T / 64, B);
-    dim3 dimBlock(256);
-    int maxbytes = 65536;
+//    dim3 dimGrid(NH, T / 64, B);
+//    dim3 dimBlock(256);
+//    int maxbytes = 65536;
 //    cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
 //    flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
+
+    dim3 dimGrid(NH, T / 64, B);
+    dim3 dimBlock(256);
+    int maxbytes = 49152;
     cudaFuncSetAttribute(flash_attention_forward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
     flash_attention_forward_kernel2<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
 
