@@ -900,7 +900,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
                 // which j in tP
                 // k_fragment % 4
                 //rP[i] = __shfl_sync(mask, tP[i][k_fragment % 4], (lane_id >> 4) * 16  + (k_fragment >> 2));
-                if (thread_id == 0) {
+                if (threadIdx.x == 0) {
                     printf("k_fragment = %d, k_fragment % 4 = %d, lane_id >> 4) * 16  + (k_fragment >> 2) = %d\n", k_fragment, k_fragment % 4, (lane_id >> 4) * 16  + (k_fragment >> 2));
 
                 }
