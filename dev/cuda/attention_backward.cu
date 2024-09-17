@@ -804,7 +804,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
         // compute m
         //
         unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
-        int thread_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
+        int lane_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
         // compute m
 
 
