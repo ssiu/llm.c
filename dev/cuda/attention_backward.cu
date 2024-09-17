@@ -840,11 +840,11 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
         }
 
         //store to sP
-        for (int i=0;i<4;i++) {
-            for (int j=0;j<4;j++) {
-                sP(warp_row + thread_row + i , thread_col + j) = tP[i][j];
-            }
-        }
+//        for (int i=0;i<4;i++) {
+//            for (int j=0;j<4;j++) {
+//                sP(warp_row + thread_row + i , thread_col + j) = tP[i][j];
+//            }
+//        }
 
         //
         // compute l
@@ -1993,7 +1993,7 @@ int main(int argc, char **argv) {
 
     // execute the forward pass on the GPU
     const int block_size = 256;
-    //attention_forward(d_out, d_vaccum, d_qkvr, d_preatt, d_att, d_inp, B, T, C, NH, block_size);
+    attention_forward(d_out, d_vaccum, d_qkvr, d_preatt, d_att, d_inp, B, T, C, NH, block_size);
     flash_attention_forward(d_out, d_inp, d_l, B, T, C, NH);
 
     // check that preatt, att, and out match between the CPU and GPU versions
