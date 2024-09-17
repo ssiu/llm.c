@@ -674,7 +674,6 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
     float* sQ = &sharedMemory[0 * T_r * T_r];
     float* sK = &sharedMemory[1 * T_r * T_r];
     float* sV = &sharedMemory[2 * T_r * T_r];
-    float* sP = &sharedMemory[3 * T_r * T_r];
 
     //int qkv_token_increment = 3 * NH * HS;
     int kv_tile_increment = T_r * 3 * NH * HS;
