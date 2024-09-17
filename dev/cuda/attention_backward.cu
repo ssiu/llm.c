@@ -890,7 +890,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
             }
         }
         // add PV to rO
-        for (int k_fragment = 0; k_fragment < HS; k_fragment++) {
+        for (int k_fragment = 0; k_fragment < 64; k_fragment++) {
 
             for (int i=0; i<4; i++) {
                 // which thread
