@@ -1665,7 +1665,8 @@ void flash_attention_forward(float* out, float* inp, float* l,
     dim3 dimBlock(256);
     int maxbytes = 65536;
     cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes);
-    flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
+    //flash_attention_forward_kernel1<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
+    flash_attention_forward_kernel2<<<dimGrid, dimBlock, maxbytes>>>(out, inp, l, B, T, NH, HS);
 
 
     cudaCheck(cudaGetLastError());
