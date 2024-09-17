@@ -920,7 +920,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
                     // which j in tP
                     // k_fragment % 4
                     rP[i] = __shfl_sync(mask, tP[i][k], (lane_id >> 4) * 16  + ((l*4 + k) >> 2));
-                    rV[i] = sV(k_fragment, thread_col + i);
+                    rV[i] = sV(l * 4 + k, thread_col + i);
                 }
 
                 for (int i = 0; i < 4; i++) {
