@@ -1272,9 +1272,9 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
                         rP[i] = __shfl_sync(mask, tP[i][k + h * 4], (lane_id /16) * 16  + ((l * 4 + k) / 4));
                         rP[i + 4] = __shfl_sync(mask, tP[i + 4][k + h * 4], (lane_id /16) * 16  + ((l * 4 + k) / 4));
                         rV[i] = sV(h * 64 + l * 4 + k, thread_col + i);
-                        if (threadIdx.x == 0 && tile==0) {
-                            printf("i = %d, rP[i] = %f, rP[i+4] = %f, rV[i] = %f\n", i, rP[i], rP[i+4], rV[i]);
-                        }
+//                        if (threadIdx.x == 0 && tile==0) {
+//                            printf("i = %d, rP[i] = %f, rP[i+4] = %f, rV[i] = %f\n", i, rP[i], rP[i+4], rV[i]);
+//                        }
                     }
 
                     for (int i = 0; i < 8; i++) {
