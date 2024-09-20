@@ -828,7 +828,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
         // now threads 0, 16 have the correct m[i],
         // so we broadcast m back to the other lanes in the half warp
         for (int i=0; i<4; i++) {
-            rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
+            rM[i] = __shfl_sync(mask, rM[i], lane_id_to_read_from);
         }
 
         //
@@ -875,7 +875,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
         // so we compute rL[i] and broadcast it back to the warp
         for (int i=0; i<4; i++) {
             rL[i] += rD[i];
-            rL[i] = __shfl_sync(mask, rL[i], thread_id_to_read_from);
+            rL[i] = __shfl_sync(mask, rL[i], lane_id_to_read_from);
         }
 
         __syncthreads();
@@ -1009,10 +1009,10 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     int warp_id = threadIdx.x / 32;
     int lane_id = threadIdx.x % 32;
 
-    int q_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * T_r * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int k_global_offset = blockIdx.z * T * 3 * NH * HS +                0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
-    int v_global_offset = blockIdx.z * T * 3 * NH * HS +                0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
-    int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * T_r * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int q_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * TILE_SIZE * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset = blockIdx.z * T * 3 * NH * HS +                      0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset = blockIdx.z * T * 3 * NH * HS +                      0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
     int l_global_offset = blockIdx.z * T * NH + blockIdx.y * T_r * NH + blockIdx.x;
 
     float* gQ = &inp[q_global_offset];
@@ -1112,7 +1112,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             }
         }
 
-        for (int k_fragment = 0; k_fragment < HS; kFragment++) {
+        for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
 //            for (int i = 0; i < 4; i++) {
 //                printf("%f ", rQ[i]);
 //            }
@@ -1182,7 +1182,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         // now threads 0, 16 have the correct m[i],
         // so we broadcast m back to the other lanes in the half warp
         for (int i=0; i<8; i++) {
-            rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
+            rM[i] = __shfl_sync(mask, rM[i], lane_id_to_read_from);
         }
 
         //
@@ -1229,7 +1229,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         // so we compute rL[i] and broadcast it back to the warp
         for (int i=0; i<8; i++) {
             rL[i] += rD[i];
-            rL[i] = __shfl_sync(mask, rL[i], thread_id_to_read_from);
+            rL[i] = __shfl_sync(mask, rL[i], lane_id_to_read_from);
         }
 
         __syncthreads();
@@ -1245,8 +1245,14 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             }
         }
         // add PV to rO
+
+        // We use warp shuffling to directly load data to each fragment for computing the outer product tO.
+        // To do this, there is some array indexing involving the modulo operator for tP to compute the lane id that we want to load data from.
+        // For some reason, in this case the compiler will put tP into local memory, causing register spillage,
+        // even though the array indexing can be computed at compile time.
+        // To resolve this, we use nested for loops to remove the use of modulo operator.
         for (int h = 0; h < 2; h++) {
-            for (int l = 0; l < 16; k++) {
+            for (int l = 0; l < 16; l++) {
                 for (int k = 0; k < 4; k++) {
                     // position is h * 64 + l * 4 + k
                     for (int i=0;i<4;i++) {
