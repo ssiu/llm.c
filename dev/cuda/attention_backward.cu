@@ -1023,9 +1023,9 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
     extern __shared__ float sharedMemory[];
 
-    float* sQ = &sharedMemory[0 * T_r * 64];
-    float* sK = &sharedMemory[1 * T_r * 64];
-    float* sV = &sharedMemory[2 * T_r * 64];
+    float* sQ = &sharedMemory[0 * TILE_SIZE * 64];
+    float* sK = &sharedMemory[1 * TILE_SIZE * 64];
+    float* sV = &sharedMemory[2 * TILE_SIZE * 64];
 
     //int qkv_token_increment = 3 * NH * HS;
     int tile_increment = TILE_SIZE * 3 * NH * HS;
