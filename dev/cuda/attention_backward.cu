@@ -648,7 +648,7 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 // l is (B, T, NH)
 
 // we use 256 threads = 8 warps in each threadblock
-// we use 64KB of shared memory for Q, K, V so each uses 16KB of shared memory
+// we use 48KB of shared memory for Q, K, V so each uses 16KB of shared memory
 // 16KB of shared memory can store 16*1024/4 = 4096 floats = 64 * 64 floats
 // so each threadblock computes 64 * 64 tile of O, and each warp does 8 * 64 tile of O
 // following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
@@ -731,12 +731,14 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
             }
         }
 
+        __syncthreads();
+
         // load gV to sV
         for (int i = 0; i < 4; i++) {
 	        FLOAT4(sV(warp_row + thread_row + i, thread_col)) = FLOAT4(gV(warp_row + thread_row + i, thread_col));
         }
 
-        __syncthreads();
+
 
 //        if (threadIdx.x==0) {
 //            for (int i=0;i<64;i++) {
@@ -975,7 +977,338 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 
 }
 
+#undef T_r
+#undef sQ(i,j)
+#undef sK(i,j)
+#undef sV(i,j)
 
+#define TILE_SIZE 128
+#define HEAD_SIZE 64
+#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
+#define sK(i,j) sK[(i) * TILE_SIZE + (j)]
+#define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
+
+
+__global__ __launch_bounds__(256)
+void flash_attention_forward_kernel3(float* out, float* inp, float* l,
+                                int B, int T, int NH, int HS) {
+// blockDim.x = NH
+// blockDim.y = T
+// blockDim.z = B
+// inp is (B, T, 3, NH, HS)
+// out is (B, T, NH, HS)
+// l is (B, T, NH)
+
+// we use 256 threads = 8 warps in each threadblock
+// we use 96KB of shared memory for Q, K, V so each uses 32KB of shared memory
+// 32KB of shared memory can store 32*1024/4 = 8192 floats = 128 * 64 floats
+// so each threadblock computes 128 * 64 tile of O, and each warp does 16 * 64 tile of O
+// following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
+// idea: if we dont use shared memory to store
+    //int thread_id = threadIdx.x;
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+
+    int q_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * T_r * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset = blockIdx.z * T * 3 * NH * HS +                0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset = blockIdx.z * T * 3 * NH * HS +                0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * T_r * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int l_global_offset = blockIdx.z * T * NH + blockIdx.y * T_r * NH + blockIdx.x;
+
+    float* gQ = &inp[q_global_offset];
+    float* gK = &inp[k_global_offset];
+    float* gV = &inp[v_global_offset];
+    float* gO = &out[o_global_offset];
+    float* gL = &l[l_global_offset];
+
+    extern __shared__ float sharedMemory[];
+
+    float* sQ = &sharedMemory[0 * T_r * 64];
+    float* sK = &sharedMemory[1 * T_r * 64];
+    float* sV = &sharedMemory[2 * T_r * 64];
+
+    //int qkv_token_increment = 3 * NH * HS;
+    int tile_increment = TILE_SIZE * 3 * NH * HS;
+    //int o_token_increment = NH * HS;
+    //int o_tile_increment = T_r * NH * HS;
+    //int l_increment = NH;
+
+    // addresses for loading data from global to shared
+    // as well as for register tiling
+    int warp_row = warp_id * 16;
+    int thread_row = (lane_id / 16) * 4;
+    int thread_col = (lane_id % 16) * 4;
+
+
+    // load gQ to sQ
+    for (int i = 0; i < 4; i++) {
+        FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
+        FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+    }
+
+    __syncthreads();
+
+    // main loop
+    float rQ[8] = {0.0f};
+    float rK[8] = {0.0f};
+    float rV[4] = {0.0f};
+    float tS[8][8] = {0.0f};
+    float (&tP)[8][8] = tS;
+    //float tP[4][4] = {0.0f};
+    float rP[8] = {0.0f};
+    float rO[8][4] = {0.0f};
+    float rM_old[8] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
+    float rM[8] = {0.0f};
+    float rL_old[8] = {0.0f};
+    float rL[8] = {0.0f};
+    // this stores sum(rP) across the half-warps
+    // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
+    float rD[8] = {0.0f};
+
+    // now we need to put the auto regressive mask, what should it be
+    // only need to check when kv_tile = blockIdx.y
+    for (int tile = 0; tile <= blockIdx.y; tile++) {
+//        if (threadIdx.x==0) {
+//            printf("HIHIHIHELO");
+//        }
+        // load gK to sK, need to first transpose
+        float rK_shared[2][4];
+
+        for (int i = 0; i < 4; i++) {
+            FLOAT4(rK_shared[0][0]) = FLOAT4(gK(warp_row + thread_row + i, thread_col));
+            FLOAT4(rK_shared[1][0]) = FLOAT4(gK(warp_row + thread_row + i + 8, thread_col));
+
+            for (int j=0; j < 4; j++) {
+                sK(thread_col + j, warp_row + thread_row + i) = rK_shared[0][j];
+                sK(thread_col + j, warp_row + thread_row + i + 8) = rK_shared[1][j];
+            }
+
+        }
+
+        // load gV to sV
+        for (int i = 0; i < 4; i++) {
+            FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
+            FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+        }
+
+        __syncthreads();
+
+//        if (threadIdx.x==0) {
+//            for (int i=0;i<64;i++) {
+//                for (int j=0;j<64;j++) {
+//                    printf("%.2f ", sK(i,j));
+//                }
+//                printf("\n");
+//            }
+//        }
+
+        //
+        // compute rS
+        //
+
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                tS[i][j] = 0;
+            }
+        }
+
+        for (int k_fragment = 0; k_fragment < HS; kFragment++) {
+//            for (int i = 0; i < 4; i++) {
+//                printf("%f ", rQ[i]);
+//            }
+
+
+            for (int i = 0; i < 4; i++) {
+                //printf("ORIGINAL address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
+                rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
+                rQ[i + 4] = sQ(warp_row + thread_row + i + 8, k_fragment);
+                //printf("UPDATE address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
+                //rQ[i] = 0;
+                rK[i] = sK(k_fragment, thread_col + i);
+                rK[i + 4] = sK(k_fragment, thread_col + i + 64);
+//                if (threadIdx.x ==0) {
+//                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
+//                }
+            }
+
+
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (blockIdx.y == kv_tile && warp_row + thread_row + i < thread_col + j) {
+                            tS[i][j] = -FLT_MAX;
+                        } else {
+                            tS[i][j] += rQ[i] * rK[j];
+                        }
+
+//                    if (threadIdx.x == 0 and k_fragment==HS-1) {
+//                        printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
+//                    }
+                }
+            }
+        }
+
+        //rescale preatt by 1/sqrt(HS)
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (tS[i][j] != -FLT_MAX) {
+                    tS[i][j] *= 1.0f / sqrtf(HS);
+                }
+            }
+        }
+
+        //
+        // compute m
+        //
+        unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
+        int lane_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
+        // compute m
+
+
+        // inter-thread reduction
+        for (int i = 0; i < 8; i++) {
+            rM[i] = rM_old[i];
+            for (int j = 0; j < 8;j++) {
+                rM[i] = fmaxf(rM[i], tS[i][j]);
+            }
+        }
+
+        //inter-warp reduction
+        for (int i=0; i < 8; i++) {
+            for (int offset = 8; offset > 0; offset /= 2) {
+               rM[i] = fmaxf(rM[i], __shfl_down_sync(mask, rM[i], offset));
+            }
+        }
+
+        // now threads 0, 16 have the correct m[i],
+        // so we broadcast m back to the other lanes in the half warp
+        for (int i=0; i<8; i++) {
+            rM[i] = __shfl_sync(mask, rM[i], thread_id_to_read_from);
+        }
+
+        //
+        // compute P
+        //
+        for (int i=0;i<8;i++) {
+            for (int j=0;j<8;j++){
+                tP[i][j] = expf(tS[i][j] - rM[i]);
+            }
+        }
+
+        //store to sP
+//        for (int i=0;i<4;i++) {
+//            for (int j=0;j<4;j++) {
+//                sP(warp_row + thread_row + i , thread_col + j) = tP[i][j];
+//            }
+//        }
+
+        //
+        // compute l
+        //
+
+        // rescale l and also reset rD to 0
+        for (int i = 0; i < 8; i++) {
+            rL[i] = expf(rM_old[i] - rM[i]) * rL_old[i];
+            rD[i] = 0;
+        }
+
+        // inter-thread reduction
+        for (int i = 0; i < 8; i++) {
+            for (int j=0;j<8;j++){
+                rD[i] += tP[i][j];
+            }
+        }
+
+        //inter-warp reduction
+        for (int i=0; i < 8; i++) {
+            for (int offset = 8; offset > 0; offset /= 2) {
+               rD[i] += __shfl_down_sync(mask, rD[i], offset);
+            }
+        }
+
+        // now threads 0, 16 have the correct rD[i],
+        // so we compute rL[i] and broadcast it back to the warp
+        for (int i=0; i<8; i++) {
+            rL[i] += rD[i];
+            rL[i] = __shfl_sync(mask, rL[i], thread_id_to_read_from);
+        }
+
+        __syncthreads();
+
+        //
+        // compute O
+        //
+
+        // first rescale O by exp(m_old - m)
+        for (int i=0; i<8; i++) {
+            for (int j=0;j<4;j++) {
+                rO[i][j] = expf(rM_old[i] - rM[i]) * rO[i][j];
+            }
+        }
+        // add PV to rO
+        for (int h = 0; h < 2; h++) {
+            for (int l = 0; l < 16; k++) {
+                for (int k = 0; k < 4; k++) {
+                    // position is h * 64 + l * 4 + k
+                    for (int i=0;i<4;i++) {
+                        rP[i] = __shfl_sync(mask, tP[i][k + h * 4], (lane_id /16) * 16  + ((l * 4 + k) / 4));
+                        rP[i + 4] = __shfl_sync(mask, tP[i + 4][k + h * 4], (lane_id /16) * 16  + ((l * 4 + k) / 4));
+                        rV[i] = sV(h * 64 + l * 4 + k, thread_col + i);
+                    }
+
+                    for (int i = 0; i < 8; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            rO[i][j] += rP[i] * rV[j];
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // update m and l
+        for (int i = 0; i < 4; i++) {
+            rM_old[i] = rM[i];
+            rL_old[i] = rL[i];
+        }
+
+        gK += tile_increment;
+        gV += tile_increment;
+        __syncthreads();
+    }
+
+
+    //rescale rO
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            rO[i][j] /= rL[i];
+        }
+    }
+
+//    if (lane_id == 0 || lane_id == 16) {
+//        for (int i=0;i<4;i++) {
+//            printf("kernel 1: i = %d, l = %f\n", blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
+//        }
+//    }
+    // store l back to gL
+    if (lane_id == 0 || lane_id == 16) {
+        for (int i = 0; i < 4; i++) {
+            //printf("kernel 1: address = %d, i = %d, l = %f\n", l_global_offset + (warp_row + thread_row + i) * NH, blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
+            gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
+        }
+    }
+
+    // store rO to gO
+    for (int i=0; i < 4; i++) {
+        FLOAT4(gO(warp_row + thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
+//        for (int j=0;j<4;j++) {
+//            gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
+//        }
+    }
+
+}
+
+__global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
+                                int B, int T, int NH, int HS) {
 // inp/dinp are (B, T, 3C), (B, T, 3, NH, HS) Q,K,V
 //
 // att/datt/dpreatt are (B, NH, T, T)
@@ -985,8 +1318,6 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 // blockDim.y = T
 // blockDim.z = B
 
-__global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
-                                int B, int T, int NH, int HS) {
 // each threadblock use 1 thread, computing a single row of dq, dk and dv
     // offset for the dq,dk,dv rows that this
     int q_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
@@ -1694,6 +2025,12 @@ void flash_attention_forward(float* out, float* inp, float* l,
     cudaFuncSetAttribute(flash_attention_forward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
     flash_attention_forward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(out, inp, l, B, T, NH, HS);
 
+
+    dim3 dimGrid3(NH, T / 128, B);
+    dim3 dimBlock3(256);
+    int maxbytes3 = 98304;
+    cudaFuncSetAttribute(flash_attention_forward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
+    flash_attention_forward_kernel2<<<dimGrid2, dimBlock2, maxbytes3>>>(out, inp, l, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 
