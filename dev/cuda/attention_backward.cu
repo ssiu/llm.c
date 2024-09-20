@@ -1137,9 +1137,9 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
                             tS[i][j] = -FLT_MAX;
                         } else {
-                            if (threadIdx.x == 0 && tile==0) {
-                            printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
-                            }
+//                            if (threadIdx.x == 0 && tile==0) {
+//                            printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
+//                            }
                             tS[i][j] += rQ[i] * rK[j];
                         }
 
@@ -1308,6 +1308,9 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
     // store rO to gO
     for (int i=0; i < 4; i++) {
+        if (threadIdx.x == 0) {
+        printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
+         }
         FLOAT4(gO(warp_row + thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
 //        for (int j=0;j<4;j++) {
 //            gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
