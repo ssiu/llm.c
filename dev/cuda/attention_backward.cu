@@ -978,9 +978,9 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 }
 
 #undef T_r
-#undef sQ(i,j)
-#undef sK(i,j)
-#undef sV(i,j)
+#undef sQ
+#undef sK
+#undef sV
 
 #define TILE_SIZE 128
 #define HEAD_SIZE 64
