@@ -1193,13 +1193,13 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         //
         for (int i=0;i<8;i++) {
             for (int j=0;j<8;j++){
-                if (threadIdx.x == 0 && tile==0) {
-                    printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
-                }
+//                if (threadIdx.x == 0 && tile==0) {
+//                    printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
+//                }
                 tP[i][j] = expf(tS[i][j] - rM[i]);
-                if (threadIdx.x == 0 && tile==0) {
-                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
-                }
+//                if (threadIdx.x == 0 && tile==0) {
+//                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
+//                }
             }
         }
 
@@ -1276,7 +1276,11 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
                     for (int i = 0; i < 8; i++) {
                         for (int j = 0; j < 4; j++) {
+
                             rO[i][j] += rP[i] * rV[j];
+                            if (threadIdx.x == 0 && tile==0) {
+                                printf("i = %d, j= %d, rO[i][j] = %f \n", i, j, rO[i][j]);
+                            }
                         }
                     }
                 }
