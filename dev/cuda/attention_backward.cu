@@ -1013,7 +1013,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     int k_global_offset = blockIdx.z * T * 3 * NH * HS +                      0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
     int v_global_offset = blockIdx.z * T * 3 * NH * HS +                      0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int l_global_offset = blockIdx.z * T * NH + blockIdx.y * T_r * NH + blockIdx.x;
+    int l_global_offset = blockIdx.z * T * NH + blockIdx.y * TILE_SIZE * NH + blockIdx.x;
 
     float* gQ = &inp[q_global_offset];
     float* gK = &inp[k_global_offset];
@@ -1134,7 +1134,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
-                    if (blockIdx.y == kv_tile && warp_row + thread_row + i < thread_col + j) {
+                    if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
                             tS[i][j] = -FLT_MAX;
                         } else {
                             tS[i][j] += rQ[i] * rK[j];
