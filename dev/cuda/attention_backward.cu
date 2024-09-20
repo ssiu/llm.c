@@ -1087,8 +1087,8 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
         // load gV to sV
         for (int i = 0; i < 4; i++) {
-            FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
-            FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+            FLOAT4(sV(warp_row + thread_row + i, thread_col)) = FLOAT4(gV(warp_row + thread_row + i, thread_col));
+            FLOAT4(sV(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gV(warp_row + thread_row + i + 8, thread_col));
         }
 
         __syncthreads();
