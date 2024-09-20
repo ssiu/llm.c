@@ -1243,10 +1243,14 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
         // first rescale O by exp(m_old - m)
         for (int i=0; i<8; i++) {
+            if (threadIdx.x == 0) {
+            printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
+            }
             for (int j=0;j<4;j++) {
                 rO[i][j] = expf(rM_old[i] - rM[i]) * rO[i][j];
             }
         }
+
         // add PV to rO
 
         // We use warp shuffling to directly load data to each fragment for computing the outer product tO.
