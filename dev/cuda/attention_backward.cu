@@ -1272,15 +1272,18 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
                         rP[i] = __shfl_sync(mask, tP[i][k + h * 4], (lane_id /16) * 16  + ((l * 4 + k) / 4));
                         rP[i + 4] = __shfl_sync(mask, tP[i + 4][k + h * 4], (lane_id /16) * 16  + ((l * 4 + k) / 4));
                         rV[i] = sV(h * 64 + l * 4 + k, thread_col + i);
+                        if (threadIdx.x == 0 && tile==0) {
+                            printf("i = %d, rP[i] = %f, rP[i+4] = %f, rV[i] = %f\n", i, rP[i], rP[i+4], rV[i]);
+                        }
                     }
 
                     for (int i = 0; i < 8; i++) {
                         for (int j = 0; j < 4; j++) {
 
                             rO[i][j] += rP[i] * rV[j];
-                            if (threadIdx.x == 0 && tile==0) {
-                                printf("i = %d, j= %d, rO[i][j] = %f \n", i, j, rO[i][j]);
-                            }
+//                            if (threadIdx.x == 0 && tile==0) {
+//                                printf("i = %d, j= %d, rO[i][j] = %f \n", i, j, rO[i][j]);
+//                            }
                         }
                     }
                 }
@@ -1322,9 +1325,9 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
     // store rO to gO
     for (int i=0; i < 4; i++) {
-        if (threadIdx.x == 0) {
-        printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
-         }
+//        if (threadIdx.x == 0) {
+//        printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
+//         }
         FLOAT4(gO(warp_row + thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
 //        for (int j=0;j<4;j++) {
 //            gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
