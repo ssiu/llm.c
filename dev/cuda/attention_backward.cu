@@ -1130,19 +1130,23 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 //                printf("%f ", rQ[i]);
 //            }
 
+            FLOAT4(rQ[0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment));
+            FLOAT4(rQ[4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment));
+            FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
+            FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
 
-            for (int i = 0; i < 4; i++) {
-                //printf("ORIGINAL address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
-                rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
-                rQ[i + 4] = sQ(warp_row + thread_row + i + 8, k_fragment);
-                //printf("UPDATE address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
-                //rQ[i] = 0;
-                rK[i] = sK(k_fragment, thread_col + i);
-                rK[i + 4] = sK(k_fragment, thread_col + i + 64);
-//                if (threadIdx.x ==0) {
-//                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
-//                }
-            }
+//            for (int i = 0; i < 4; i++) {
+//                //printf("ORIGINAL address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
+//                rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
+//                rQ[i + 4] = sQ(warp_row + thread_row + i + 8, k_fragment);
+//                //printf("UPDATE address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
+//                //rQ[i] = 0;
+//                rK[i] = sK(k_fragment, thread_col + i);
+//                rK[i + 4] = sK(k_fragment, thread_col + i + 64);
+////                if (threadIdx.x ==0) {
+////                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
+////                }
+//            }
 
 
             for (int i = 0; i < 4; i++) {
