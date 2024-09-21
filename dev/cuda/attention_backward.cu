@@ -1132,17 +1132,31 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             }
 
 
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
-                            tS[i][j] = -FLT_MAX;
-                        } else {
-//                            if (threadIdx.x == 0 && tile==0) {
-//                            printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
-//                            }
-                            tS[i][j] += rQ[i] * rK[j];
-                        }
+                        tS[i][j] = -FLT_MAX;
+                    } else {
+                        tS[i][j] += rQ[i] * rK[j];
+                    }
 
+                    if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j) {
+                        tS[i + 4][j] = -FLT_MAX;
+                    } else {
+                        tS[i + 4][j] += rQ[i + 4] * rK[j];
+                    }
+
+                    if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j + 64) {
+                        tS[i][j+4] = -FLT_MAX;
+                    } else {
+                        tS[i][j+4] += rQ[i] * rK[j+4];
+                    }
+
+                    if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j + 64) {
+                        tS[i+4][j+4] = -FLT_MAX;
+                    } else {
+                        tS[i+4][j+4] += rQ[i+4] * rK[j+4];
+                    }
 //                    if (threadIdx.x == 0 and k_fragment==HS-1) {
 //                        printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
 //                    }
@@ -1259,7 +1273,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
         // add PV to rO
 
-        // We use warp shuffling to directly load data to each fragment for computing the outer product tO.
+        // We use warp shuffling to directly load data to each fragment from tP to compute the outer product tO.
         // To do this, there is some array indexing involving the modulo operator for tP to compute the lane id that we want to load data from.
         // For some reason, in this case the compiler will put tP into local memory, causing register spillage,
         // even though the array indexing can be computed at compile time.
@@ -1292,7 +1306,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
 
         // update m and l
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 8; i++) {
             rM_old[i] = rM[i];
             rL_old[i] = rL[i];
         }
@@ -1304,7 +1318,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
 
     //rescale rO
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 4; j++) {
             rO[i][j] /= rL[i];
         }
@@ -1320,6 +1334,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         for (int i = 0; i < 4; i++) {
             //printf("kernel 1: address = %d, i = %d, l = %f\n", l_global_offset + (warp_row + thread_row + i) * NH, blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
             gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
+            gL(warp_row + thread_row + 8 + i) = rM[i + 4] + logf(rL[i + 4]);
         }
     }
 
@@ -1329,6 +1344,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 //        printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
 //         }
         FLOAT4(gO(warp_row + thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
+        FLOAT4(gO(warp_row + thread_row + 8 + i, thread_col)) = FLOAT4(rO[i+4][0]);
 //        for (int j=0;j<4;j++) {
 //            gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
 //        }
