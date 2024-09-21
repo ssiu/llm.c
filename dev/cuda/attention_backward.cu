@@ -1053,8 +1053,10 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         FLOAT4(rQ_shared[1][0]) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
 
         for (int j=0; j < 4; j++) {
-            sQ(thread_col + j, warp_row + thread_row + i) = rQ_shared[0][j];
-            sQ(thread_col + j, warp_row + thread_row + i + 8) = rQ_shared[1][j];
+//            sQ(thread_col + j, warp_row + thread_row + i) = rQ_shared[0][j];
+//            sQ(thread_col + j, warp_row + thread_row + i + 8) = rQ_shared[1][j];
+            sQ(warp_row + thread_row + i, thread_col + j) = rQ_shared[0][j];
+            sQ(warp_row + thread_row + i + 8, thread_col + j) = rQ_shared[1][j];
         }
 
     }
