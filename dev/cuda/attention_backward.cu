@@ -2368,7 +2368,7 @@ int main(int argc, char **argv) {
 
     // hyperparameters
     int B = 4;
-    int T = 4096;
+    int T = 1024;
     int C = 768;
     int NH = 12;
 //    int B = 1;
