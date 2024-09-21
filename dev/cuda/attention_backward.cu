@@ -984,7 +984,6 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 
 #define TILE_SIZE 128
 #define HEAD_SIZE 64
-#define
 #define sQ(i,j) sQ[(i) + (j) * TILE_SIZE]
 #define sK(i,j) sK[(i) * TILE_SIZE + (j)]
 #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
