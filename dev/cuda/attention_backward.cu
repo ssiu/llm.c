@@ -984,7 +984,8 @@ void flash_attention_forward_kernel2(float* out, float* inp, float* l,
 
 #define TILE_SIZE 128
 #define HEAD_SIZE 64
-#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
+#define
+#define sQ(i,j) sQ[(i) + (j) * TILE_SIZE]
 #define sK(i,j) sK[(i) * TILE_SIZE + (j)]
 #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
 
@@ -1041,9 +1042,22 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
 
     // load gQ to sQ
+//    for (int i = 0; i < 4; i++) {
+//        FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
+//        FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+//    }
+
+    float rQ_shared[2][4];
+
     for (int i = 0; i < 4; i++) {
-        FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
-        FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+        FLOAT4(rQ_shared[0][0]) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
+        FLOAT4(rQ_shared[1][0]) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+
+        for (int j=0; j < 4; j++) {
+            sQ(thread_col + j, warp_row + thread_row + i) = rQ_shared[0][j];
+            sQ(thread_col + j, warp_row + thread_row + i + 8) = rQ_shared[1][j];
+        }
+
     }
 
     // main loop
