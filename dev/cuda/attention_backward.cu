@@ -1046,8 +1046,6 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
     }
 
-    __syncthreads();
-
     // main loop
     float rQ[8] = {0.0f};
     float rK[8] = {0.0f};
@@ -1255,7 +1253,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             rL[i] = __shfl_sync(mask, rL[i], lane_id_to_read_from);
         }
 
-        __syncthreads();
+
 
         //
         // compute O
