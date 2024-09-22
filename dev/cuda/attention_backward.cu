@@ -1077,7 +1077,6 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     // this stores sum(rP) across the half-warps
     // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
     float rD[8] = {0.0f};
-    int reg_ptr;
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int tile = 0; tile <= blockIdx.y; tile++) {
