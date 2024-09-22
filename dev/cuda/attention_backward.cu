@@ -1137,10 +1137,10 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
 
             if (k_fragment < HEAD_SIZE - 1) {
-                FLOAT4(rQ[reg_ptr^1][0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment + 1));
-                FLOAT4(rQ[reg_ptr^1][4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment + 1));
-                FLOAT4(rK[reg_ptr^1][0]) = FLOAT4(sK(k_fragment + 1, thread_col));
-                FLOAT4(rK[reg_ptr^1][4]) = FLOAT4(sK(k_fragment + 1, thread_col + 64));
+                FLOAT4(rQ[reg_ptr + 1 - 2 * reg_ptr][0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment + 1));
+                FLOAT4(rQ[reg_ptr + 1 - 2 * reg_ptr][4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment + 1));
+                FLOAT4(rK[reg_ptr + 1 - 2 * reg_ptr][0]) = FLOAT4(sK(k_fragment + 1, thread_col));
+                FLOAT4(rK[reg_ptr + 1 - 2 * reg_ptr][4]) = FLOAT4(sK(k_fragment + 1, thread_col + 64));
             }
 
 
