@@ -1141,25 +1141,25 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
                         tS[i][j] = -FLT_MAX;
                     } else {
-                        tS[i][j] += rQ[i] * rK[reg_ptr][j];
+                        tS[i][j] += rQ[i] * rK[j];
                     }
 
                     if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j) {
                         tS[i + 4][j] = -FLT_MAX;
                     } else {
-                        tS[i + 4][j] += rQ[i + 4] * rK[reg_ptr][j];
+                        tS[i + 4][j] += rQ[i + 4] * rK[j];
                     }
 
                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j + 64) {
                         tS[i][j+4] = -FLT_MAX;
                     } else {
-                        tS[i][j+4] += rQ[i] * rK[reg_ptr][j+4];
+                        tS[i][j+4] += rQ[i] * rK[j+4];
                     }
 
                     if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j + 64) {
                         tS[i+4][j+4] = -FLT_MAX;
                     } else {
-                        tS[i+4][j+4] += rQ[i+4] * rK[reg_ptr][j+4];
+                        tS[i+4][j+4] += rQ[i+4] * rK[j+4];
                     }
                 }
             }
