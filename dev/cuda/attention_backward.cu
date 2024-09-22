@@ -1027,11 +1027,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     float* sK = &sharedMemory[1 * TILE_SIZE * 64];
     float* sV = &sharedMemory[2 * TILE_SIZE * 64];
 
-    //int qkv_token_increment = 3 * NH * HS;
     int tile_increment = TILE_SIZE * 3 * NH * HS;
-    //int o_token_increment = NH * HS;
-    //int o_tile_increment = T_r * NH * HS;
-    //int l_increment = NH;
 
     // addresses for loading data from global to shared
     // as well as for register tiling
@@ -1041,10 +1037,6 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
 
     // load gQ to sQ
-//    for (int i = 0; i < 4; i++) {
-//        FLOAT4(sQ(warp_row + thread_row + i, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
-//        FLOAT4(sQ(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
-//    }
 
     float rQ_shared[2][4];
 
@@ -1053,8 +1045,6 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         FLOAT4(rQ_shared[1][0]) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
 
         for (int j=0; j < 4; j++) {
-//            sQ(thread_col + j, warp_row + thread_row + i) = rQ_shared[0][j];
-//            sQ(thread_col + j, warp_row + thread_row + i + 8) = rQ_shared[1][j];
             sQ(warp_row + thread_row + i, thread_col + j) = rQ_shared[0][j];
             sQ(warp_row + thread_row + i + 8, thread_col + j) = rQ_shared[1][j];
         }
@@ -1080,9 +1070,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int tile = 0; tile <= blockIdx.y; tile++) {
-//        if (threadIdx.x==0) {
-//            printf("HIHIHIHELO");
-//        }
+
         // load gK to sK, need to first transpose
         float rK_shared[2][4];
 
@@ -1105,14 +1093,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
         __syncthreads();
 
-//        if (threadIdx.x==0) {
-//            for (int i=0;i<64;i++) {
-//                for (int j=0;j<64;j++) {
-//                    printf("%.2f ", sK(i,j));
-//                }
-//                printf("\n");
-//            }
-//        }
+
 
         //
         // compute rS
@@ -1124,9 +1105,6 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             }
         }
 
-
-
-        //mainloop
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
 
             FLOAT4(rQ[0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment));
@@ -1207,22 +1185,12 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         //
         for (int i=0;i<8;i++) {
             for (int j=0;j<8;j++){
-//                if (threadIdx.x == 0 && tile==0) {
-//                    printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
-//                }
                 tP[i][j] = expf(tS[i][j] - rM[i]);
-//                if (threadIdx.x == 0 && tile==0) {
-//                    printf("i = %d, j= %d, tP[i][j] = %f \n", i, j, tP[i][j]);
-//                }
             }
         }
 
         //store to sP
-//        for (int i=0;i<4;i++) {
-//            for (int j=0;j<4;j++) {
-//                sP(warp_row + thread_row + i , thread_col + j) = tP[i][j];
-//            }
-//        }
+
 
         //
         // compute l
@@ -1263,9 +1231,6 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
         // first rescale O by exp(m_old - m)
         for (int i=0; i<8; i++) {
-//            if (threadIdx.x == 0) {
-//            printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
-//            }
             for (int j=0;j<4;j++) {
                 rO[i][j] = expf(rM_old[i] - rM[i]) * rO[i][j];
             }
@@ -1324,11 +1289,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
         }
     }
 
-//    if (lane_id == 0 || lane_id == 16) {
-//        for (int i=0;i<4;i++) {
-//            printf("kernel 1: i = %d, l = %f\n", blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
-//        }
-//    }
+
     // store l back to gL
     if (lane_id == 0 || lane_id == 16) {
         for (int i = 0; i < 4; i++) {
@@ -1340,14 +1301,8 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
     // store rO to gO
     for (int i=0; i < 4; i++) {
-//        if (threadIdx.x == 0) {
-//        printf("i = %d, rO[i][0] = %f\n", i, rO[i][0]);
-//         }
         FLOAT4(gO(warp_row + thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
         FLOAT4(gO(warp_row + thread_row + 8 + i, thread_col)) = FLOAT4(rO[i+4][0]);
-//        for (int j=0;j<4;j++) {
-//            gO(warp_row + thread_row + i, thread_col + j) = rO[i][j];
-//        }
     }
 
 }
