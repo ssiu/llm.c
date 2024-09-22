@@ -1060,7 +1060,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     //float tP[4][4] = {0.0f};
     float rP[8] = {0.0f};
     float rO[8][4] = {0.0f};
-    float rM_old[8] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
+    float rM_old[8] = {-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX};
     float rM[8] = {0.0f};
     float rL_old[8] = {0.0f};
     float rL[8] = {0.0f};
