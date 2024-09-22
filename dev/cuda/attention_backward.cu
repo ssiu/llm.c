@@ -1062,8 +1062,8 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     }
 
     // main loop
-    float rQ[8] = {0.0f};
-    float rK[8] = {0.0f};
+    float rQ[2][8] = {0.0f};
+    float rK[2][8] = {0.0f};
     float rV[4] = {0.0f};
     float tS[8][8] = {0.0f};
     float (&tP)[8][8] = tS;
@@ -1077,7 +1077,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
     // this stores sum(rP) across the half-warps
     // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
     float rD[8] = {0.0f};
-
+    int reg_ptr;
     // now we need to put the auto regressive mask, what should it be
     // only need to check when kv_tile = blockIdx.y
     for (int tile = 0; tile <= blockIdx.y; tile++) {
@@ -1117,6 +1117,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
         //
         // compute rS
+        // with register double buffering
         //
 
         for (int i = 0; i < 8; i++) {
@@ -1125,28 +1126,22 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             }
         }
 
+        // prologue
+        reg_ptr = 0;
+        FLOAT4(rQ[reg_ptr][0]) = FLOAT4(sQ(warp_row + thread_row, 0));
+        FLOAT4(rQ[reg_ptr][4]) = FLOAT4(sQ(warp_row + thread_row + 8, 0));
+        FLOAT4(rK[reg_ptr][0]) = FLOAT4(sK(0, thread_col));
+        FLOAT4(rK[reg_ptr][4]) = FLOAT4(sK(0, thread_col + 64));
+
+        //mainloop
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
-//            for (int i = 0; i < 4; i++) {
-//                printf("%f ", rQ[i]);
-//            }
 
-            FLOAT4(rQ[0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment));
-            FLOAT4(rQ[4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment));
-            FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
-            FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
-
-//            for (int i = 0; i < 4; i++) {
-//                //printf("ORIGINAL address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
-//                rQ[i] = sQ(warp_row + thread_row + i, k_fragment);
-//                rQ[i + 4] = sQ(warp_row + thread_row + i + 8, k_fragment);
-//                //printf("UPDATE address in sQ is %d, sQ is %f, rQ is %f\n", (warp_row + thread_row + i) * 64 + k_fragment, sQ(warp_row + thread_row + i, k_fragment), rQ[i]);
-//                //rQ[i] = 0;
-//                rK[i] = sK(k_fragment, thread_col + i);
-//                rK[i + 4] = sK(k_fragment, thread_col + i + 64);
-////                if (threadIdx.x ==0) {
-////                        printf("k_fragment = %d, i = %d, rQ = %f, rK = %f \n", k_fragment, i, rQ[i], rK[i]);
-////                }
-//            }
+            if (k_fragment < HEAD_SIZE - 1) {
+                FLOAT4(rQ[reg_ptr^1][0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment + 1));
+                FLOAT4(rQ[reg_ptr^1][4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment + 1));
+                FLOAT4(rK[reg_ptr^1][0]) = FLOAT4(sK(k_fragment + 1, thread_col));
+                FLOAT4(rK[reg_ptr^1][4]) = FLOAT4(sK(k_fragment + 1, thread_col + 64));
+            }
 
 
             for (int i = 0; i < 4; i++) {
@@ -1154,31 +1149,30 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
                         tS[i][j] = -FLT_MAX;
                     } else {
-                        tS[i][j] += rQ[i] * rK[j];
+                        tS[i][j] += rQ[reg_ptr][i] * rK[reg_ptr][j];
                     }
 
                     if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j) {
                         tS[i + 4][j] = -FLT_MAX;
                     } else {
-                        tS[i + 4][j] += rQ[i + 4] * rK[j];
+                        tS[i + 4][j] += rQ[reg_ptr][i + 4] * rK[reg_ptr][j];
                     }
 
                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j + 64) {
                         tS[i][j+4] = -FLT_MAX;
                     } else {
-                        tS[i][j+4] += rQ[i] * rK[j+4];
+                        tS[i][j+4] += rQ[reg_ptr][i] * rK[reg_ptr][j+4];
                     }
 
                     if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j + 64) {
                         tS[i+4][j+4] = -FLT_MAX;
                     } else {
-                        tS[i+4][j+4] += rQ[i+4] * rK[j+4];
+                        tS[i+4][j+4] += rQ[reg_ptr][i+4] * rK[reg_ptr][j+4];
                     }
-//                    if (threadIdx.x == 0 and k_fragment==HS-1) {
-//                        printf("i = %d, j= %d, tS[i][j] = %f \n", i, j, tS[i][j]);
-//                    }
                 }
             }
+
+            reg_ptr ^= 1;
         }
 
         //rescale preatt by 1/sqrt(HS)
