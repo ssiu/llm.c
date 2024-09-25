@@ -1306,6 +1306,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
 // att/datt/dpreatt are (B, NH, T, T)
 // dout is (B, T, C)
 // l is (B, T, NH)
+// d is (B, T, NH)
 // blockDim.x = NH
 // blockDim.y = T
 // blockDim.z = B
@@ -1454,6 +1455,33 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
 
 
 }
+
+
+// preprocessing D = rowsum(dO * O)
+__global__ void flash_attention_backward_preprocessing_kernel(float* d, float* dout, float* out,
+                                int B, int T, int NH, int HS) {
+// both dO and O are (B, T, NH, HS)
+// since HS = 64, 1 warp can load 2 rows and do warp shuffling
+// so we launch B * T / 2 * NH warps
+// can we have a buffer?
+
+
+}
+
+__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l,
+                                int B, int T, int NH, int HS) {
+// inp/dinp are (B, T, 3C), (B, T, 3, NH, HS) Q,K,V
+//
+// att/datt/dpreatt are (B, NH, T, T)
+// dout is (B, T, C)
+// l is (B, T, NH)
+// blockDim.x = NH
+// blockDim.y = T
+// blockDim.z = B
+
+
+}
+
 
 
 __global__ void permute_kernel(float* q, float* k, float* v,
