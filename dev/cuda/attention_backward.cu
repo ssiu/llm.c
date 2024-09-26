@@ -323,6 +323,7 @@ __global__ void flash_attention_forward_kernel0(float* out, float* inp, float* l
 #define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
 #define gO(i,j) gO[(i) * 1 * NH * HS + (j)]
 #define gL(i) gL[(i) * NH]
+#define gD(i) gD[(i) * NH]
 #define sQ(i,j) sQ[(i) * HS + (j)]
 #define sK(i,j) sK[(i) * HS + (j)]
 #define sV(i,j) sV[(i) * HS + (j)]
@@ -1299,6 +1300,12 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
 
 }
 
+#undef TILE_SIZE
+#undef HEAD_SIZE
+#undef sQ
+#undef sK
+#undef sV
+
 __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
                                 int B, int T, int NH, int HS) {
 // inp/dinp are (B, T, 3C), (B, T, 3, NH, HS) Q,K,V
@@ -1327,8 +1334,6 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     // following flashattention 2, we only store (log (L) + m) instead of L, m
     int l_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
     int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
-
-
 
     int qkv_T_increment = 3 * NH * HS;
     int o_T_increment = NH * HS;
@@ -1452,34 +1457,136 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
     for (int i=0;i<HS;i++) {
         gdQ[q_offset_current + i] = rdQ[i] / sqrtf(HS);
     }
-
-
 }
 
 
 // preprocessing D = rowsum(dO * O)
-__global__ void flash_attention_backward_preprocessing_kernel(float* d, float* dout, float* out,
+__global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
                                 int B, int T, int NH, int HS) {
-// both dO and O are (B, T, NH, HS)
-// since HS = 64, 1 warp can load 2 rows and do warp shuffling
-// so we launch B * T / 2 * NH warps
-// can we have a buffer?
+    // both dO and O are (B, T, NH, HS)
+    // d is (B, T, NH)
+    // each thread compute a single token for a single head
+    // so we have B * T * NH
+    // blockDim.x = NH
+    // blockDim.y = T
+    // blockDim.z = B
+    offset_o = blockIdx.z * T * NH * HS + blockIdx.y * NH * HS + blockIdx.x * HS;
+    offset_d = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
 
+    float reg_d = 0;
+    for (int i =0; i < HEAD_SIZE; i++) {
+        reg_d += dout[offset_o + i] * out[offset_o + i];
+    }
 
+    d[offset_d] = reg_d;
 }
 
-__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l,
+
+
+#define TILE_SIZE 32
+#define HEAD_SIZE 64
+#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
+#define sK(i,j) sK[(i) * TILE_SIZE + (j)]
+#define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
+//#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))
+
+__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int NH, int HS) {
-// inp/dinp are (B, T, 3C), (B, T, 3, NH, HS) Q,K,V
-//
-// att/datt/dpreatt are (B, NH, T, T)
-// dout is (B, T, C)
-// l is (B, T, NH)
-// blockDim.x = NH
-// blockDim.y = T
-// blockDim.z = B
+    // inp  (B, T, 3, NH, HS)
+    // out  (B, T, NH, HS)
+    // dout (B, T, NH, HS)
+    // l    (B, T, NH)
+    // d    (B, T, NH)
 
+    // dinp (B, T, 3, NH, HS)
 
+    // blockDim.x = NH
+    // blockDim.y = T
+    // blockDim.z = B
+
+    // load Q, K, V, dO, dQ
+    // each is a 32 * 64 logical matrix, so each takes 32 * 64 * 4 / 1024 = 8KB
+    // total smem size is 8*5 = 40KB
+
+    // Each threadblock does a single 32 * 64
+    // So we launch B * T / TILE_SIZE * NH blocks
+    // we launch 128 thread per block
+
+    int q_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset_start = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // offset for the q,k,v of the corresponding head
+    int q_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * TILE_SIZE * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * TILE_SIZE * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * TILE_SIZE * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset_current = blockIdx.z * T * 1 * NH * HS + blockIdx.y * TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // following flashattention 2, we only store (log (L) + m) instead of L, m
+    int ld_global_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
+    int ld_global_offset_current = blockIdx.z * T * NH + blockIdx.y * TILE_SIZE * NH + blockIdx.x;
+
+    int qkv_increment = TILE_SIZE * 3 * NH * HS;
+    int o_increment = TILE_SIZE * NH * HS;
+    int ld_increment = TILE_SIZE * NH;
+
+    float* gQ = &inp[q_global_offset_start];
+    float* gK = &inp[k_global_offset_current];
+    float* gV = &inp[v_global_offset_current];
+
+    float* gdO = &dout[o_global_offset_start];
+    float* gdQ = &dinp[q_global_offset_start];
+    float* gdK = &dinp[k_global_offset_current];
+    float* gdV = &dinp[k_global_offset_current];
+
+    extern __shared__ float sharedMemory[];
+
+    float* sQ  = &sharedMemory[0 * TILE_SIZE * HEAD_SIZE];
+    float* sK  = &sharedMemory[1 * TILE_SIZE * HEAD_SIZE];
+    float* sV  = &sharedMemory[2 * TILE_SIZE * HEAD_SIZE];
+    float* sdQ = &sharedMemory[3 * TILE_SIZE * HEAD_SIZE];
+    float* sdO = &sharedMemory[4 * TILE_SIZE * HEAD_SIZE];
+
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+
+    // offset for loading K, V from global to shared
+    int thread_row = warp_id * 8 + (lane_id / 16) * 4;
+    int thread_col = (lane_id % 16) * 4;
+
+    float* rL[4];
+    float* rD[4];
+    float* rS[4][4] = {0.0f};
+    // first load K, V into shared memory
+    // everything is TILE_SIZE * HEAD_SIZE in row major
+    for (int i=0; i< 4;i ++){
+        FLOAT4(sK(thread_row + i, thread_col)) = FLOAT4(gK(thread_row + i, thread_col));
+        FLOAT4(sK(thread_row + i, thread_col)) = FLOAT4(gK(thread_row + i, thread_col));
+    }
+
+    for (int qTile = 0; qTile < T / TILE_SIZE; qTile++) {
+        // load Q, dQ, dO into shared memory
+
+        // load l, d into registers
+        for (int i=0; i< 4;i ++){
+            rL[i] = gL[i];
+            rD[i] = gD[i];
+        }
+
+        // compute S = Q * K^T
+
+        // compute P = exp(Q * K^T - l)
+
+        // compute dV = dV + P^T * dO
+
+        // compute dP = dO * V^T
+
+        // compute dS = P \circ (dP - D)
+
+        // dQ =
+
+    }
 }
 
 
@@ -2057,13 +2164,26 @@ void flash_attention_forward(float* out, float* inp, float* l,
 }
 
 
-void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* l,
+void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int C, int NH) {
 
     int HS = C / NH; // head size
-    dim3 dimGrid(NH, T, B);
-    dim3 dimBlock(1);
-    flash_attention_backward_kernel0<<<dimGrid, dimBlock>>>(dinp, inp, dout, out, l, B, T, NH, HS);
+    dim3 dimGrid0(NH, T, B);
+    dim3 dimBlock0(1);
+    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
+
+    // preprocess D = rowsum(dO * O)
+    dim3 dimGrid_preprocessing1(NH, T, B);
+    dim3 dimBlock_preprocessing1(1);
+    flash_attention_backward_preprocessing_kernel1<<dimGrid_preprocessing1, dimBlock_preprocessing1>>(d, dout, out);
+
+
+    dim3 dimGrid1(NH, T / 32, B);
+    dim3 dimBlock1(128);
+    int maxbytes1 = 65536;
+    cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+
+    flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
