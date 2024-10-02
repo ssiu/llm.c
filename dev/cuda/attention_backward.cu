@@ -2385,11 +2385,11 @@ void flash_attention_forward(float* out, float* inp, float* l,
 
     int HS = C / NH; // head size
 
-    dim3 dimGrid1(NH, T / 64, B);
-    dim3 dimBlock1(256);
-    int maxbytes1 = 65536;
-    cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-    flash_attention_forward_kernel1<<<dimGrid1, dimBlock1, maxbytes1>>>(out, inp, l, B, T, NH, HS);
+//     dim3 dimGrid1(NH, T / 64, B);
+//     dim3 dimBlock1(256);
+//     int maxbytes1 = 65536;
+//     cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+//     flash_attention_forward_kernel1<<<dimGrid1, dimBlock1, maxbytes1>>>(out, inp, l, B, T, NH, HS);
 
     dim3 dimGrid2(NH, T / 64, B);
     dim3 dimBlock2(256);
@@ -2398,11 +2398,11 @@ void flash_attention_forward(float* out, float* inp, float* l,
     flash_attention_forward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(out, inp, l, B, T, NH, HS);
 
 
-    dim3 dimGrid3(NH, T / 128, B);
-    dim3 dimBlock3(256);
-    int maxbytes3 = 98304;
-    cudaFuncSetAttribute(flash_attention_forward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
-    flash_attention_forward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(out, inp, l, B, T, NH, HS);
+//     dim3 dimGrid3(NH, T / 128, B);
+//     dim3 dimBlock3(256);
+//     int maxbytes3 = 98304;
+//     cudaFuncSetAttribute(flash_attention_forward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
+//     flash_attention_forward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(out, inp, l, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 
@@ -2413,22 +2413,22 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
                                 int B, int T, int C, int NH) {
 
     int HS = C / NH; // head size
-//     dim3 dimGrid0(NH, T, B);
-//     dim3 dimBlock0(1);
-//     flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
+    dim3 dimGrid0(NH, T, B);
+    dim3 dimBlock0(1);
+    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
 
     // preprocess D = rowsum(dO * O)
-    dim3 dimGrid_preprocessing1(NH, T, B);
-    dim3 dimBlock_preprocessing1(1);
-    flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
-
-
-    dim3 dimGrid1(NH, T / 32, B);
-    dim3 dimBlock1(32);
-    int maxbytes1 = 65536;
-    cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-
-    flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+//     dim3 dimGrid_preprocessing1(NH, T, B);
+//     dim3 dimBlock_preprocessing1(1);
+//     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
+//
+//
+//     dim3 dimGrid1(NH, T / 32, B);
+//     dim3 dimBlock1(32);
+//     int maxbytes1 = 65536;
+//     cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+//
+//     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
@@ -2700,7 +2700,7 @@ int main(int argc, char **argv) {
 //     int C = 768;
 //     int NH = 12;
    int B = 1;
-   int T = 128;
+   int T = 64;
    int C = 64;
    int NH = 1;
 
