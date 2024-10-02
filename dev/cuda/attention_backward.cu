@@ -1606,7 +1606,6 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float rV[4];
     float rdO[4];
     float rP[4];
-    float rdV[4];
     float rdS[4];
 
     float tdQ[4][4] = {0.0f};
@@ -1621,7 +1620,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     // everything is TILE_SIZE * HEAD_SIZE in row major
     for (int i=0; i< 4;i ++){
         FLOAT4(sK(thread_row_copy + i, thread_col_copy)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy));
-        FLOAT4(sK(thread_row_copy + i, thread_col_copy)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy));
+        FLOAT4(sV(thread_row_copy + i, thread_col_copy)) = FLOAT4(gV(thread_row_copy + i, thread_col_copy));
 
     }
 
