@@ -1499,7 +1499,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
 #define sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
 #define sdS_T(i,j) sdS[(i) + (j) * TILE_SIZE]
-#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
+//#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
 
 __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* dl, float* dd,
                                 int B, int T, int NH, int HS) {
