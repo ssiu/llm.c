@@ -2749,7 +2749,7 @@ int main(int argc, char **argv) {
 
 
     // create device memory for the backward pass
-    float *d_dinp, *d_dqkvr, *d_dpreatt, *d_datt, *d_dvaccum, *d_dout, *dd;
+    float *d_dinp, *d_dqkvr, *d_dpreatt, *d_datt, *d_dvaccum, *d_dout, *d_d;
     cudaCheck(cudaMalloc(&d_dinp, B * T * 3 * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_dqkvr, B * T * 3 * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_dpreatt, B * NH * T * T * sizeof(float)));
