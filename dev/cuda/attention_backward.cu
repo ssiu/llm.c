@@ -2407,7 +2407,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     int HS = C / NH; // head size
     dim3 dimGrid0(NH, T, B);
     dim3 dimBlock0(1);
-    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
+    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, dl, B, T, NH, HS);
 
     // preprocess D = rowsum(dO * O)
     dim3 dimGrid_preprocessing1(NH, T, B);
