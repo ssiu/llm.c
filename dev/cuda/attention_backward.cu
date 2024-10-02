@@ -1460,6 +1460,7 @@ __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float*
 }
 
 
+
 // preprocessing D = rowsum(dO * O)
 __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
                                 int B, int T, int NH, int HS) {
@@ -1470,11 +1471,11 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
     // blockDim.x = NH
     // blockDim.y = T
     // blockDim.z = B
-    offset_o = blockIdx.z * T * NH * HS + blockIdx.y * NH * HS + blockIdx.x * HS;
-    offset_d = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+    int offset_o = blockIdx.z * T * NH * HS + blockIdx.y * NH * HS + blockIdx.x * HS;
+    int offset_d = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
 
     float reg_d = 0;
-    for (int i =0; i < HEAD_SIZE; i++) {
+    for (int i =0; i < HS; i++) {
         reg_d += dout[offset_o + i] * out[offset_o + i];
     }
 
@@ -1485,6 +1486,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 
 #define TILE_SIZE 32
 #define HEAD_SIZE 64
+
 #define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
 #define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
@@ -1499,7 +1501,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define sdS_T(i,j) sdS[(i) + (j) * TILE_SIZE]
 //#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))
 
-__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
+__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* dl, float* dd,
                                 int B, int T, int NH, int HS) {
     // inp  (B, T, 3, NH, HS)
     // out  (B, T, NH, HS)
@@ -1546,7 +1548,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float* gK = &inp[k_global_offset_current];
     float* gV = &inp[v_global_offset_current];
     float* gdO = &dout[o_global_offset_start];
-
+    float* gL = &dl[ld_global_offset_start];
+    float* gD = &dd[ld_global_offset_start];
     // output
     float* gdQ = &dinp[q_global_offset_start];
     float* gdK = &dinp[k_global_offset_current];
@@ -1584,6 +1587,9 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float rK[4];
     float rV[4];
     float rdO[4];
+    float rP[4];
+    float rdV[4];
+    float rdS[4];
 
     float tdQ[4][4] = {0.0f};
     float tdK[4][4] = {0.0f};
@@ -1596,25 +1602,22 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     // first load K, V into shared memory
     // everything is TILE_SIZE * HEAD_SIZE in row major
     for (int i=0; i< 4;i ++){
-        for (int j=0; j< 4; j++) {
-            FLOAT4(sK(thread_row_copy + i, thread_col_copy + j)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy + j));
-            FLOAT4(sK(thread_row_copy + i, thread_col_copy + j)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy + j));
-        }
+        FLOAT4(sK(thread_row_copy + i, thread_col_copy)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy));
+        FLOAT4(sK(thread_row_copy + i, thread_col_copy)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy));
+
     }
 
     for (int q_tile = blockIdx.y; q_tile < T / TILE_SIZE; q_tile++) {
         // load Q, dQ, dO into shared memory
         for (int i=0; i < 4;i ++){
-            for (int j=0;j< 4; j++) {
-                FLOAT4(sQ(thread_row_copy + i, thread_col_copy+j)) = FLOAT4(gQ(thread_row_copy + i, thread_col_copy+j));
-                FLOAT4(sQ(thread_row_copy + i, thread_col_copy+j)) = FLOAT4(gQ(thread_row_copy + i, thread_col_copy+j));
+            FLOAT4(sQ(thread_row_copy + i, thread_col_copy)) = FLOAT4(gQ(thread_row_copy + i, thread_col_copy));
+            FLOAT4(sQ(thread_row_copy + i, thread_col_copy)) = FLOAT4(gQ(thread_row_copy + i, thread_col_copy));
 
-                FLOAT4(sdQ(thread_row_copy + i, thread_col_copy+j)) = FLOAT4(gdQ(thread_row_copy + i, thread_col_copy+j));
-                FLOAT4(sdQ(thread_row_copy + i, thread_col_copy+j)) = FLOAT4(gdQ(thread_row_copy + i, thread_col_copy+j));
+            FLOAT4(sdQ(thread_row_copy + i, thread_col_copy)) = FLOAT4(gdQ(thread_row_copy + i, thread_col_copy));
+            FLOAT4(sdQ(thread_row_copy + i, thread_col_copy)) = FLOAT4(gdQ(thread_row_copy + i, thread_col_copy));
 
-                FLOAT4(sdO(thread_row_copy + i, thread_col_copy+j)) = FLOAT4(gdO(thread_row_copy + i, thread_col_copy+j));
-                FLOAT4(sdO(thread_row_copy + i, thread_col_copy+j)) = FLOAT4(gdO(thread_row_copy + i, thread_col_copy+j));
-            }
+            FLOAT4(sdO(thread_row_copy + i, thread_col_copy)) = FLOAT4(gdO(thread_row_copy + i, thread_col_copy));
+            FLOAT4(sdO(thread_row_copy + i, thread_col_copy)) = FLOAT4(gdO(thread_row_copy + i, thread_col_copy));
         }
 
         // load l, d into registers
@@ -1668,7 +1671,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         //
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
-               sP[thread_row_32_x_32 + i][thread_col_32_x_32 + j] = tP[i][j];
+               sP(thread_row_32_x_32 + i, thread_col_32_x_32 + j) = tP[i][j];
             }
         }
 
@@ -1676,7 +1679,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
             for (int i=0;i<4;i++) {
                 rP[i] = sP_T(thread_row_32_x_64 + i, thread_col_32_x_64);
-                rdO[i] = sdO(thread_row_32_x_64, thread_col_32_x_64 + i)
+                rdO[i] = sdO(thread_row_32_x_64, thread_col_32_x_64 + i);
             }
             for (int i=0; i<4; i++) {
                 for (int j=0; j<4; j++) {
@@ -1781,21 +1784,21 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     // rescale dK
     for (int i=0;i<4;i++) {
         for (int j=0; j<4; j++) {
-            rdK[i][j] *= 1.0f / sqrtf(HS);
+            tdK[i][j] *= 1.0f / sqrtf(HS);
         }
     }
 
     // store dK to global memory
     for (int i=0;i<4;i++) {
         for (int j=0; j<4; j++) {
-            gdK(thread_row_copy + i , thread_col_copy + j) = rdK[i][j];
+            gdK(thread_row_copy + i , thread_col_copy + j) = tdK[i][j];
         }
     }
 
     // store dV to global memory
     for (int i=0;i<4;i++) {
         for (int j=0; j<4; j++) {
-            gdV(thread_row_copy + i , thread_col_copy + j) = rdV[i][j];
+            gdV(thread_row_copy + i , thread_col_copy + j) = tdV[i][j];
         }
     }
 }
@@ -2386,7 +2389,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     // preprocess D = rowsum(dO * O)
     dim3 dimGrid_preprocessing1(NH, T, B);
     dim3 dimBlock_preprocessing1(1);
-    flash_attention_backward_preprocessing_kernel1<<dimGrid_preprocessing1, dimBlock_preprocessing1>>(d, dout, out);
+    flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out);
 
 
     dim3 dimGrid1(NH, T / 32, B);
