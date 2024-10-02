@@ -638,6 +638,9 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
 
 }
 
+#undef sP
+
+
 __global__ __launch_bounds__(256)
 void flash_attention_forward_kernel2(float* out, float* inp, float* l,
                                 int B, int T, int NH, int HS) {
@@ -1494,7 +1497,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
 #define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
 
-#define gdO(i,j) gO[(i) * 1 * NH * HS + (j)]
+#define gdO(i,j) gdO[(i) * 1 * NH * HS + (j)]
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
 
@@ -1632,6 +1635,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
 
         // load l, d into registers
+        // WRONG
         for (int i=0; i< 4;i ++){
             rL[i] = gL[thread_row_copy + i];
             rD[i] = gD[thread_row_copy + i];
