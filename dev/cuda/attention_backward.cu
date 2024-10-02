@@ -1487,6 +1487,17 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define TILE_SIZE 32
 #define HEAD_SIZE 64
 
+#define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
+#define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
+#define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
+#define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
+#define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
+#define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
+
+#define gdO(i,j) gO[(i) * 1 * NH * HS + (j)]
+#define gL(i) gL[(i) * NH]
+#define gD(i) gD[(i) * NH]
+
 #define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
 #define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
@@ -1776,7 +1787,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
         for (int i=0;i<4;i++) {
             for (int j=0; j<4; j++) {
-                atomicAdd(&gQ(thread_row_copy + i, thread_col_copy + j ), rdQ[i][j]);
+                atomicAdd(&gQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
             }
         }
     }
