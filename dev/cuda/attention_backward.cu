@@ -1519,7 +1519,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 // update D and L position
 
 
-__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* dl, float* dd,
+__global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int NH, int HS) {
     // inp  (B, T, 3, NH, HS)
     // out  (B, T, NH, HS)
@@ -1566,8 +1566,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float* gK = &inp[k_global_offset_current];
     float* gV = &inp[v_global_offset_current];
     float* gdO = &dout[o_global_offset_start];
-    float* gL = &dl[ld_global_offset_start];
-    float* gD = &dd[ld_global_offset_start];
+    float* gL = &l[ld_global_offset_start];
+    float* gD = &d[ld_global_offset_start];
     // output
     float* gdQ = &dinp[q_global_offset_start];
     float* gdK = &dinp[k_global_offset_current];
@@ -2400,18 +2400,18 @@ void flash_attention_forward(float* out, float* inp, float* l,
 }
 
 
-void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* dl, float* dd,
+void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int C, int NH) {
 
     int HS = C / NH; // head size
     dim3 dimGrid0(NH, T, B);
     dim3 dimBlock0(1);
-    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, dl, B, T, NH, HS);
+    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
 
 //     // preprocess D = rowsum(dO * O)
 //     dim3 dimGrid_preprocessing1(NH, T, B);
 //     dim3 dimBlock_preprocessing1(1);
-//     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(dd, dout, out, B, T, NH, HS);
+//     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
 //
 //
 //     dim3 dimGrid1(NH, T / 32, B);
@@ -2419,7 +2419,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 //     int maxbytes1 = 65536;
 //     cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
 //
-//     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, dl, dd, B, T, NH, HS);
+//     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
@@ -2749,7 +2749,7 @@ int main(int argc, char **argv) {
 
 
     // create device memory for the backward pass
-    float *d_dinp, *d_dqkvr, *d_dpreatt, *d_datt, *d_dvaccum, *d_dout;
+    float *d_dinp, *d_dqkvr, *d_dpreatt, *d_datt, *d_dvaccum, *d_dout, *dd;
     cudaCheck(cudaMalloc(&d_dinp, B * T * 3 * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_dqkvr, B * T * 3 * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_dpreatt, B * NH * T * T * sizeof(float)));
@@ -2764,13 +2764,14 @@ int main(int argc, char **argv) {
     cudaCheck(cudaMemset(d_dpreatt, 0, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMemset(d_datt, 0, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMemset(d_dvaccum, 0, B * T * C * sizeof(float)));
+    cudaCheck(cudaMalloc(&d_d, B * T * NH * sizeof(float)));
 
 
     // call backward() on the GPU
 //     attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
 //                        d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
 //                        B, T, C, NH, block_size);
-    flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
+    flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, d_d, B, T, C, NH);
 
 //    for (int i=0; i <  B * T * 3 * C; i++) {
 //        printf("i = %d, cpu = %f\n", i, dinp[i], d_dinp[i]);
