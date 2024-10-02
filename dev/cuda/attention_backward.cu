@@ -1619,8 +1619,11 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     // first load K, V into shared memory
     // everything is TILE_SIZE * HEAD_SIZE in row major
     for (int i=0; i< 4;i ++){
-        FLOAT4(sK(thread_row_copy + i, thread_col_copy)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy));
-        FLOAT4(sV(thread_row_copy + i, thread_col_copy)) = FLOAT4(gV(thread_row_copy + i, thread_col_copy));
+        for (int j=0; j< 4;j ++){
+            sK(thread_row_copy + i, thread_col_copy +j ) = gK(thread_row_copy + i, thread_col_copy +j);
+            sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy +j);
+        }
+
 
     }
 
@@ -1636,6 +1639,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             FLOAT4(sdO(thread_row_copy + i, thread_col_copy)) = FLOAT4(gdO(thread_row_copy + i, thread_col_copy));
             FLOAT4(sdO(thread_row_copy + i, thread_col_copy)) = FLOAT4(gdO(thread_row_copy + i, thread_col_copy));
         }
+
+        __syncthreads();
 
         // load l, d into registers
         for (int i=0; i< 4;i ++){
@@ -1691,6 +1696,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
                sP(thread_row_32_x_32 + i, thread_col_32_x_32 + j) = tP[i][j];
             }
         }
+
+        __syncthreads();
 
         // compute dV = dV + P^T * dO
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
@@ -1751,6 +1758,9 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
+        __syncthreads();
+
+
         // compute dK = dS^T * Q
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
@@ -1767,7 +1777,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
 
         //
-        // compute dQ =
+        // compute dQ
         //
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
@@ -1801,6 +1811,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         gdO += o_increment;
         gL += ld_increment;
         gD += ld_increment;
+        __syncthreads();
     }
 
     // rescale dK
