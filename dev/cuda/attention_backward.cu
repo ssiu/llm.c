@@ -2404,22 +2404,22 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
                                 int B, int T, int C, int NH) {
 
     int HS = C / NH; // head size
-    dim3 dimGrid0(NH, T, B);
-    dim3 dimBlock0(1);
-    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
+//     dim3 dimGrid0(NH, T, B);
+//     dim3 dimBlock0(1);
+//     flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
 
-//     // preprocess D = rowsum(dO * O)
-//     dim3 dimGrid_preprocessing1(NH, T, B);
-//     dim3 dimBlock_preprocessing1(1);
-//     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
-//
-//
-//     dim3 dimGrid1(NH, T / 32, B);
-//     dim3 dimBlock1(128);
-//     int maxbytes1 = 65536;
-//     cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-//
-//     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    // preprocess D = rowsum(dO * O)
+    dim3 dimGrid_preprocessing1(NH, T, B);
+    dim3 dimBlock_preprocessing1(1);
+    flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
+
+
+    dim3 dimGrid1(NH, T / 32, B);
+    dim3 dimBlock1(128);
+    int maxbytes1 = 65536;
+    cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+
+    flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
@@ -2686,14 +2686,14 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-    int B = 4;
-    int T = 1024;
-    int C = 768;
-    int NH = 12;
-//    int B = 1;
-//    int T = 128;
-//    int C = 64;
-//    int NH = 1;
+//     int B = 4;
+//     int T = 1024;
+//     int C = 768;
+//     int NH = 12;
+   int B = 1;
+   int T = 128;
+   int C = 64;
+   int NH = 1;
 
     // read kernel_num from command line
     int kernel_num = 1;
