@@ -1639,10 +1639,9 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
 
         // load l, d into registers
-        // WRONG
         for (int i=0; i< 4;i ++){
-            rL[i] = gL[thread_row_copy + i];
-            rD[i] = gD[thread_row_copy + i];
+            rL[i] = gL(thread_row_copy + i);
+            rD[i] = gD(thread_row_copy + i);
         }
 
 
@@ -1798,6 +1797,11 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
                 atomicAdd(&gQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
             }
         }
+
+        gQ += qkv_increment;
+        gdO += o_increment;
+        gL += ld_increment;
+        gD += ld_increment;
     }
 
     // rescale dK
