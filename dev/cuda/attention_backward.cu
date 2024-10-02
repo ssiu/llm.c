@@ -2408,18 +2408,18 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     dim3 dimBlock0(1);
     flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, dl, B, T, NH, HS);
 
-    // preprocess D = rowsum(dO * O)
-    dim3 dimGrid_preprocessing1(NH, T, B);
-    dim3 dimBlock_preprocessing1(1);
-    flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(dd, dout, out, B, T, NH, HS);
-
-
-    dim3 dimGrid1(NH, T / 32, B);
-    dim3 dimBlock1(128);
-    int maxbytes1 = 65536;
-    cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-
-    flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, dl, dd, B, T, NH, HS);
+//     // preprocess D = rowsum(dO * O)
+//     dim3 dimGrid_preprocessing1(NH, T, B);
+//     dim3 dimBlock_preprocessing1(1);
+//     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(dd, dout, out, B, T, NH, HS);
+//
+//
+//     dim3 dimGrid1(NH, T / 32, B);
+//     dim3 dimBlock1(128);
+//     int maxbytes1 = 65536;
+//     cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+//
+//     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, dl, dd, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
@@ -2767,10 +2767,10 @@ int main(int argc, char **argv) {
 
 
     // call backward() on the GPU
-    attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
+    // attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
                        d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
                        B, T, C, NH, block_size);
-   // flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
+    flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, B, T, C, NH);
 
 //    for (int i=0; i <  B * T * 3 * C; i++) {
 //        printf("i = %d, cpu = %f\n", i, dinp[i], d_dinp[i]);
