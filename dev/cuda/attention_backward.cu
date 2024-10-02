@@ -1623,8 +1623,6 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             sK(thread_row_copy + i, thread_col_copy +j ) = gK(thread_row_copy + i, thread_col_copy +j);
             sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy +j);
         }
-
-
     }
 
     for (int q_tile = blockIdx.y; q_tile < T / TILE_SIZE; q_tile++) {
@@ -2426,7 +2424,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 
 
     dim3 dimGrid1(NH, T / 32, B);
-    dim3 dimBlock1(128);
+    dim3 dimBlock1(32);
     int maxbytes1 = 65536;
     cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
 
