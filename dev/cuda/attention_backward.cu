@@ -1529,7 +1529,7 @@ __global__ void flash_attention_backward_test(float* dinp, float* inp, float* do
 
     sQ[0] = inp[0];
 
-    dinp[0] = sQ[0]
+    dinp[0] = sQ[0];
 
 
 }
