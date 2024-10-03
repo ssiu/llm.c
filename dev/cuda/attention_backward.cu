@@ -1520,17 +1520,17 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 // update D and L position
 
 
-__global__ void flash_attention_backward_test(float* inp, float* out, int B, int T, int NH, int HS) {
-    extern __shared__ float sharedMemory[];
-    //__shared__ float sharedMemory[100];
-    float* sQ  = &sharedMemory[0];
-
-
-    sQ[0] = inp[0];
-
-    out[0] = sQ[0];
-
-}
+// __global__ void flash_attention_backward_test(float* inp, float* out, int B, int T, int NH, int HS) {
+//     extern __shared__ float sharedMemory[];
+//     //__shared__ float sharedMemory[100];
+//     float* sQ  = &sharedMemory[0];
+//
+//
+//     sQ[0] = inp[0];
+//
+//     out[0] = sQ[0];
+//
+// }
 
 
 __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
@@ -1636,10 +1636,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
     for (int i=0; i< 4;i ++){
         for (int j=0; j< 4;j ++){
-            //sK(thread_row_copy + i, thread_col_copy + j) = gK(thread_row_copy + i, thread_col_copy +j);
-            //sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy +j);
-            rQ[i] = inp[0];
-//             sV[0] = gV(thread_row_copy + i, thread_col_copy +j);
+            sK(thread_row_copy + i, thread_col_copy + j) = gK(thread_row_copy + i, thread_col_copy + j);
+            sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy + j);
         }
     }
 
@@ -2393,16 +2391,16 @@ void flash_attention_forward(float* out, float* inp, float* l,
 
     int HS = C / NH; // head size
 
-    // test shared memory
-    dim3 dimGrid1(NH, T / 32, B);
-    dim3 dimBlock1(1);
-    int maxbytes1 = 98304;
-    //cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-
-    //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
-    cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-    flash_attention_backward_test<<<dimGrid1, dimBlock1>>>( inp,  out,  B, T, NH, HS);
-    // end test
+//     // test shared memory
+//     dim3 dimGrid1(NH, T / 32, B);
+//     dim3 dimBlock1(1);
+//     int maxbytes1 = 98304;
+//     //cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+//
+//     //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+//     cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+//     flash_attention_backward_test<<<dimGrid1, dimBlock1>>>( inp,  out,  B, T, NH, HS);
+//     // end test
 
 
     // inp is (B, T, 3, NH, HS)
@@ -2457,14 +2455,14 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 
 
 
-//     dim3 dimGrid1(NH, T / 32, B);
-//     dim3 dimBlock1(1);
-//     int maxbytes1 = 98304;
-//     //cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-//
-//     //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
-//     cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-//     flash_attention_backward_test<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    dim3 dimGrid1(NH, T / 32, B);
+    dim3 dimBlock1(1);
+    int maxbytes1 = 98304;
+    //cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+
+    //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+    flash_attention_backward_test<<<dimGrid1, dimBlock1, maxbytes1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 
