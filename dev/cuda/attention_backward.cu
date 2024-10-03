@@ -1904,7 +1904,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
         for (int i=0;i<4;i++) {
             for (int j=0; j<4; j++) {
-                atomicAdd(&gQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
+                atomicAdd(&gdQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
             }
         }
 
