@@ -1493,6 +1493,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
 #define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
 #define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
+
 #define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
 #define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
 #define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
@@ -1583,6 +1584,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float* sP = &sharedMemory[5 * TILE_SIZE * HEAD_SIZE];
     float* sdS = &sharedMemory[5 * TILE_SIZE * HEAD_SIZE + HEAD_SIZE * HEAD_SIZE];
 
+    int thread_id = threadIdx.x;
     int warp_id = threadIdx.x / 32;
     int lane_id = threadIdx.x % 32;
 
@@ -1618,11 +1620,14 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float (&tdS)[4][2] = tdP;
     // first load K, V into shared memory
     // everything is TILE_SIZE * HEAD_SIZE in row major
+    if (thread_id == 0) {
+        printf("%f\n", )
+    }
     for (int i=0; i< 4;i ++){
         for (int j=0; j< 4;j ++){
             sK(thread_row_copy + i, thread_col_copy +j ) = gK(thread_row_copy + i, thread_col_copy +j);
             //sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy +j);
-            sV(thread_row_copy + i, thread_col_copy +j ) = gV(0,0);
+            sV[4096] = gV(thread_row_copy + i, thread_col_copy +j);
         }
     }
 
