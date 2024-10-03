@@ -2401,7 +2401,7 @@ void flash_attention_forward(float* out, float* inp, float* l,
 
     //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
     cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-    flash_attention_backward_test<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    flash_attention_backward_test<<<dimGrid1, dimBlock1>>>( inp,  out,  B, T, NH, HS);
     // end test
 
 
