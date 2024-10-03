@@ -1572,11 +1572,6 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float* gL = &l[ld_global_offset_start];
     float* gD = &d[ld_global_offset_start];
 
-    if (thread_id == 0) {
-
-        printf("dV offset is %d\n", v_global_offset_current);
-
-    }
 
     // output
     float* gdQ = &dinp[q_global_offset_start];
@@ -1600,7 +1595,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     int thread_col_copy = (lane_id % 16) * 4;
 
     // offset when computing 32 x 32 miccro kernel
-    int thread_row_32_x_32 =  warp_id * 8 + (lane_id / 16) * 4;
+    int thread_row_32_x_32 = warp_id * 8 + (lane_id / 16) * 4;
     int thread_col_32_x_32 = (lane_id % 16) * 2;
 
     // offset when computing 32 x 64 miccro kernel
@@ -1681,15 +1676,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tS\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tS[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tS\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
         //rescale preatt by 1/sqrt(HS)
         for (int i = 0; i < 4; i++) {
@@ -1700,15 +1695,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tS scaled\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tS[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tS scaled\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
 
         // compute P = exp(Q * K^T - l)
@@ -1718,15 +1713,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tP\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tP[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tP\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
         // store to sP
         //
@@ -1751,15 +1746,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tdV\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 4; j++) {
-                    printf("%.2f ", tdV[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tdV\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 4; j++) {
+//                     printf("%.2f ", tdV[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
 
         //
@@ -1792,11 +1787,31 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
+        if (thread_id == 0) {
+            printf("tdP\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 2; j++) {
+                    printf("%.2f ", tdP[i][j]);
+                }
+                printf("\n");
+            }
+        }
+
 
         // compute dS = P \circ (dP - D)
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                 tdS[i][j] = tP[i][j] * (tdP[i][j] - rD[i]);
+            }
+        }
+
+        if (thread_id == 0) {
+            printf("tdS\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 2; j++) {
+                    printf("%.2f ", tdS[i][j]);
+                }
+                printf("\n");
             }
         }
 
@@ -1822,6 +1837,16 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
                 for (int j=0; j<4; j++) {
                     tdK[i][j] += rdS[i] * rQ[j];
                 }
+            }
+        }
+
+        if (thread_id == 0) {
+            printf("tdK\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    printf("%.2f ", tdK[i][j]);
+                }
+                printf("\n");
             }
         }
 
