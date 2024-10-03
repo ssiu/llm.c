@@ -1773,11 +1773,11 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         // compute dP = dO * V^T
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
             for (int i = 0; i < 4; i++) {
-                rdO[i] = sdO(thread_row_32_x_32 + i, thread_col_32_x_32);
+                rdO[i] = sdO(thread_row_32_x_32 + i, k_fragment);
 
             }
             for (int i = 0; i < 2; i++) {
-                rV[i] = sV_T(thread_row_32_x_32, thread_col_32_x_32 + i);
+                rV[i] = sV_T(k_fragment, thread_col_32_x_32 + i);
             }
 
             for (int i = 0; i < 4; i++) {
@@ -1814,8 +1814,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
-                rdS[i] = sdS_T(thread_row_32_x_64 + i, thread_col_32_x_64);
-                rQ[i] = sQ(thread_row_32_x_64, thread_col_32_x_64 + i);
+                rdS[i] = sdS_T(thread_row_32_x_64 + i, k_fragment);
+                rQ[i] = sQ(k_fragment, thread_col_32_x_64 + i);
             }
 
             for (int i=0;i<4;i++) {
@@ -1831,8 +1831,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
-                rdS[i] = sdS(thread_row_32_x_64 + i, thread_col_32_x_64);
-                rK[i] = sK(thread_row_32_x_64, thread_col_32_x_64 + i);
+                rdS[i] = sdS(thread_row_32_x_64 + i, k_fragment);
+                rK[i] = sK(k_fragment, thread_col_32_x_64 + i);
             }
 
             for (int i=0;i<4;i++) {
