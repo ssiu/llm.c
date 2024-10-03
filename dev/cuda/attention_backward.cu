@@ -1623,8 +1623,9 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
     for (int i=0; i< 4;i ++){
         for (int j=0; j< 4;j ++){
-            sK(thread_row_copy + i, thread_col_copy +j ) = gK(thread_row_copy + i, thread_col_copy +j);
+            //sK(thread_row_copy + i, thread_col_copy + j) = gK(thread_row_copy + i, thread_col_copy +j);
             //sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy +j);
+            sK[4096] = gK(thread_row_copy + i, thread_col_copy +j);
             sV[4096] = gV(thread_row_copy + i, thread_col_copy +j);
         }
     }
