@@ -1934,6 +1934,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
 
         gQ += qkv_increment;
+        gdQ += qkv_increment;
         gdO += o_increment;
         gL += ld_increment;
         gD += ld_increment;
@@ -2946,7 +2947,7 @@ int main(int argc, char **argv) {
     printf("Checking the backward pass CPU <-> GPU...\n");
     //printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
-     printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
+    printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
 
 
