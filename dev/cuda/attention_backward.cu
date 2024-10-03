@@ -1541,6 +1541,11 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     // So we launch B * T / TILE_SIZE * NH blocks
     // we launch 128 thread per block
 
+    int thread_id = threadIdx.x;
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+
+
     int q_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
     int k_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
     int v_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
@@ -1588,9 +1593,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float* sP = &sharedMemory[5 * TILE_SIZE * HEAD_SIZE];
     float* sdS = &sharedMemory[5 * TILE_SIZE * HEAD_SIZE + HEAD_SIZE * HEAD_SIZE];
 
-    int thread_id = threadIdx.x;
-    int warp_id = threadIdx.x / 32;
-    int lane_id = threadIdx.x % 32;
+
 
     // offset for loading K, V from global to shared
     int thread_row_copy = warp_id * 8 + (lane_id / 16) * 4;
