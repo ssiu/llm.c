@@ -1566,6 +1566,13 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float* gdO = &dout[o_global_offset_start];
     float* gL = &l[ld_global_offset_start];
     float* gD = &d[ld_global_offset_start];
+
+    if (thread_id == 0) {
+
+        printf("dV offset is %d\n", v_global_offset_current);
+
+    }
+
     // output
     float* gdQ = &dinp[q_global_offset_start];
     float* gdK = &dinp[k_global_offset_current];
