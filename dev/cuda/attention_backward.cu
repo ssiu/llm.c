@@ -1927,6 +1927,17 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
         // store dQ
 
+        if (thread_id == 0) {
+            printf("tdQ scaled\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    printf("%.2f ", tdQ[i][j]);
+                }
+                printf("\n");
+            }
+        }
+
+
         for (int i=0;i<4;i++) {
             for (int j=0; j<4; j++) {
                 atomicAdd(&gdQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
