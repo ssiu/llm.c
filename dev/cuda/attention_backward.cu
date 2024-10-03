@@ -1522,15 +1522,14 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 
 __global__ void flash_attention_backward_test(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                                                               int B, int T, int NH, int HS) {
-    //extern __shared__ float sharedMemory[];
-    __shared__ float sharedMemory[100];
-    float* sQ  = &sharedMemory[0 * TILE_SIZE * HEAD_SIZE];
+    extern __shared__ float sharedMemory[];
+    //__shared__ float sharedMemory[100];
+    float* sQ  = &sharedMemory[0];
 
 
     sQ[0] = inp[0];
 
     dinp[0] = sQ[0];
-
 
 }
 
