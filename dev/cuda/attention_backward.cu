@@ -1672,7 +1672,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
 
         if (thread_id == 0) {
-            printf('tS\n')
+            printf("tS\n");
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 2; j++) {
                     printf("%.2f ", tS[i][j]);
