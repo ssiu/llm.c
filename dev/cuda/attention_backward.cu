@@ -1771,7 +1771,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
                 }
                 printf("\n");
             }
-
+        }
         if (thread_id == 0) {
             printf("tdS init\n");
             for (int i = 0; i < 4; i++) {
