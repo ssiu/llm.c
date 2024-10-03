@@ -333,7 +333,7 @@ void validate_result(D* device_result, const T* cpu_reference, const char* name,
         if (fabs(cpu_reference[i] - (T)out_gpu[i]) > t_eff) {
             printf("Mismatch of %s at %d: CPU_ref: %f vs GPU: %f\n", name, i, cpu_reference[i], (T)out_gpu[i]);
             nfaults ++;
-            if (nfaults >= 64) {
+            if (nfaults >= 128) {
                 free(out_gpu);
                 exit(EXIT_FAILURE);
             }
