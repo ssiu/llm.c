@@ -1763,7 +1763,34 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
         // todo need to scale 1/sqrt(HS) for dK and dQ?
         // also need masking on dP and dS
+        if (thread_id == 0) {
+            printf("tdP init\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 2; j++) {
+                    printf("%.2f ", tdK[i][j]);
+                }
+                printf("\n");
+            }
 
+        if (thread_id == 0) {
+            printf("tdS init\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 2; j++) {
+                    printf("%.2f ", tdK[i][j]);
+                }
+                printf("\n");
+            }
+        }
+
+        if (thread_id == 0) {
+            printf("tdK init\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    printf("%.2f ", tdK[i][j]);
+                }
+                printf("\n");
+            }
+        }
 
         // compute dP = dO * V^T
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
