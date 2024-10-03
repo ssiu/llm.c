@@ -1520,6 +1520,21 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 // update D and L position
 
 
+__global__ void flash_attention_backward_test(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
+                                                                              int B, int T, int NH, int HS) {
+    extern __shared__ float sharedMemory[];
+
+    float* sQ  = &sharedMemory[0 * TILE_SIZE * HEAD_SIZE];
+
+
+    sQ[0] = inp[0];
+
+    dinp[0] = sQ[0]
+
+
+}
+
+
 __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int NH, int HS) {
     // inp  (B, T, 3, NH, HS)
@@ -2428,14 +2443,25 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
 
 
-    dim3 dimGrid1(NH, T / 32, B);
-    dim3 dimBlock1(32);
-    int maxbytes1 = 98304;
-    cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
 
-    flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+
+
+    dim3 dimGrid1(NH, T / 32, B);
+    dim3 dimBlock1(1);
+    int maxbytes1 = 98304;
+    //cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+
+    //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
+    flash_attention_backward_test<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
+
+
+
+
+
+
 }
 
 // attention forward pass kernel
@@ -2770,6 +2796,7 @@ int main(int argc, char **argv) {
     cudaCheck(cudaMalloc(&d_datt, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMalloc(&d_dvaccum, B * T * C * sizeof(float)));
     cudaCheck(cudaMalloc(&d_dout, B * T * C * sizeof(float)));
+    cudaCheck(cudaMalloc(&d_d, B * T * NH * sizeof(float)));
     // copy over the dout gradients that starts the backprop chain
     cudaCheck(cudaMemcpy(d_dout, dout, B * T * C * sizeof(float), cudaMemcpyHostToDevice));
     // memset all the other memory to zeros, to += into
@@ -2778,7 +2805,7 @@ int main(int argc, char **argv) {
     cudaCheck(cudaMemset(d_dpreatt, 0, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMemset(d_datt, 0, B * NH * T * T * sizeof(float)));
     cudaCheck(cudaMemset(d_dvaccum, 0, B * T * C * sizeof(float)));
-    cudaCheck(cudaMalloc(&d_d, B * T * NH * sizeof(float)));
+
 
 
     // call backward() on the GPU
