@@ -1677,7 +1677,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
                 for (int j = 0; j < 2; j++) {
                     printf("%.2f ", tS[i][j]);
                 }
-                printf('\n')
+                printf('\n');
             }
         }
 
