@@ -1793,7 +1793,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
 
         // compute dP = dO * V^T
-        for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
+        for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
             for (int i = 0; i < 4; i++) {
                 rdO[i] = sdO(thread_row_32_x_32 + i, k_fragment);
 
