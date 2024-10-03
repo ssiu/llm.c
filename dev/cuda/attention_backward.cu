@@ -1763,34 +1763,34 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
         // todo need to scale 1/sqrt(HS) for dK and dQ?
         // also need masking on dP and dS
-        if (thread_id == 0) {
-            printf("tdP init\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tdP[i][j]);
-                }
-                printf("\n");
-            }
-        }
-        if (thread_id == 0) {
-            printf("tdS init\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tdS[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tdP init\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tdP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
+//         if (thread_id == 0) {
+//             printf("tdS init\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tdS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
-        if (thread_id == 0) {
-            printf("tdK init\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 4; j++) {
-                    printf("%.2f ", tdK[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tdK init\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 4; j++) {
+//                     printf("%.2f ", tdK[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
         // compute dP = dO * V^T
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
@@ -1814,15 +1814,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tdP\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tdP[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tdP\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tdP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
 
         // compute dS = P \circ (dP - D)
@@ -1832,15 +1832,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tdS\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 2; j++) {
-                    printf("%.2f ", tdS[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tdS\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 2; j++) {
+//                     printf("%.2f ", tdS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
         //store dS to shared memory
         for (int i = 0; i < 8; i++) {
@@ -1867,15 +1867,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
-        if (thread_id == 0) {
-            printf("tdK\n");
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 4; j++) {
-                    printf("%.2f ", tdK[i][j]);
-                }
-                printf("\n");
-            }
-        }
+//         if (thread_id == 0) {
+//             printf("tdK\n");
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 4; j++) {
+//                     printf("%.2f ", tdK[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//         }
 
         //
         // compute dQ
@@ -2921,7 +2921,7 @@ int main(int argc, char **argv) {
     printf("Checking the backward pass CPU <-> GPU...\n");
     //printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
-    //printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
+    printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
 
 
