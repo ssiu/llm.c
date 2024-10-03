@@ -2391,40 +2391,29 @@ void flash_attention_forward(float* out, float* inp, float* l,
 
     int HS = C / NH; // head size
 
-//     // test shared memory
-//     dim3 dimGrid1(NH, T / 32, B);
-//     dim3 dimBlock1(1);
-//     int maxbytes1 = 98304;
-//     //cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-//
-//     //flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
-//     cudaFuncSetAttribute(flash_attention_backward_test, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
-//     flash_attention_backward_test<<<dimGrid1, dimBlock1>>>( inp,  out,  B, T, NH, HS);
-//     // end test
-
-
     // inp is (B, T, 3, NH, HS)
     // out is (B, T, NH, HS)
     // l is (B, T, NH)
 //    int HS = C / NH; // head size
-//    dim3 dimGrid1(NH, T, B);
-//    dim3 dimBlock1(1);
-//    flash_attention_forward_kernel0<<<dimGrid1, dimBlock1>>>(out, inp, l, B, T, NH, HS);
-//    int T_r = 64;
+   dim3 dimGrid1(NH, T, B);
+   dim3 dimBlock1(1);
+   flash_attention_forward_kernel0<<<dimGrid1, dimBlock1>>>(out, inp, l, B, T, NH, HS);
 
 
 
+//      int T_r = 64;
 //     dim3 dimGrid1(NH, T / 64, B);
 //     dim3 dimBlock1(256);
 //     int maxbytes1 = 65536;
 //     cudaFuncSetAttribute(flash_attention_forward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
 //     flash_attention_forward_kernel1<<<dimGrid1, dimBlock1, maxbytes1>>>(out, inp, l, B, T, NH, HS);
 
-    dim3 dimGrid2(NH, T / 64, B);
-    dim3 dimBlock2(256);
-    int maxbytes2 = 49152;
-    cudaFuncSetAttribute(flash_attention_forward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
-    flash_attention_forward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(out, inp, l, B, T, NH, HS);
+
+//     dim3 dimGrid2(NH, T / 64, B);
+//     dim3 dimBlock2(256);
+//     int maxbytes2 = 49152;
+//     cudaFuncSetAttribute(flash_attention_forward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
+//     flash_attention_forward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(out, inp, l, B, T, NH, HS);
 
 
 //     dim3 dimGrid3(NH, T / 128, B);
@@ -2740,7 +2729,7 @@ int main(int argc, char **argv) {
 //     int C = 768;
 //     int NH = 12;
    int B = 1;
-   int T = 128;
+   int T = 32;
    int C = 64;
    int NH = 1;
 
