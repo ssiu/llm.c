@@ -1880,6 +1880,14 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         //
         // compute dQ
         //
+
+        // reset tdQ back to zero
+        for (int i=0;i<4;i++) {
+            for (int j=0; j<4; j++) {
+                tdQ[i][j] = 0;
+            }
+        }
+
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
@@ -2826,7 +2834,7 @@ int main(int argc, char **argv) {
 //     int C = 768;
 //     int NH = 12;
    int B = 1;
-   int T = 32;
+   int T = 64;
    int C = 64;
    int NH = 1;
 
