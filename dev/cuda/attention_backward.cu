@@ -1947,15 +1947,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         }
     }
 
-    if (thread_id == 0) {
-        printf("tdK scaled\n");
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                printf("%.2f ", tdK[i][j]);
-            }
-            printf("\n");
-        }
-    }
+//     if (thread_id == 0) {
+//         printf("tdK scaled\n");
+//         for (int i = 0; i < 4; i++) {
+//             for (int j = 0; j < 4; j++) {
+//                 printf("%.2f ", tdK[i][j]);
+//             }
+//             printf("\n");
+//         }
+//     }
 
     // store dK to global memory
     for (int i=0;i<4;i++) {
@@ -2851,7 +2851,7 @@ int main(int argc, char **argv) {
 //     int C = 768;
 //     int NH = 12;
    int B = 1;
-   int T = 32;
+   int T = 64;
    int C = 64;
    int NH = 1;
 
