@@ -1515,22 +1515,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
 #define sdS_T(i,j) sdS[(i) + (j) * TILE_SIZE]
 //#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
-//todo
-// update Q, dO position after each iteration
-// update D and L position
-
-
-// __global__ void flash_attention_backward_test(float* inp, float* out, int B, int T, int NH, int HS) {
-//     extern __shared__ float sharedMemory[];
-//     //__shared__ float sharedMemory[100];
-//     float* sQ  = &sharedMemory[0];
-//
-//
-//     sQ[0] = inp[0];
-//
-//     out[0] = sQ[0];
-//
-// }
 
 
 __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
@@ -1670,10 +1654,10 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         // compute S = Q * K^T
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
             for (int i = 0; i < 4; i++) {
-                rQ[i] = sQ(thread_row_32_x_32 + i, thread_col_32_x_32);
+                rQ[i] = sQ(thread_row_32_x_32 + i, k_fragment);
             }
             for (int i = 0; i < 2; i++) {
-                rK[i] = sK_T(thread_row_32_x_32, thread_col_32_x_32 + i);
+                rK[i] = sK_T(k_fragment, thread_col_32_x_32 + i);
             }
 
             for (int i = 0; i < 4; i++) {
@@ -1716,8 +1700,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         // compute dV = dV + P^T * dO
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
             for (int i=0;i<4;i++) {
-                rP[i] = sP_T(thread_row_32_x_64 + i, thread_col_32_x_64);
-                rdO[i] = sdO(thread_row_32_x_64, thread_col_32_x_64 + i);
+                rP[i] = sP_T(thread_row_32_x_64 + i, k_fragment);
+                rdO[i] = sdO(k_fragment, thread_col_32_x_64 + i);
             }
             for (int i=0; i<4; i++) {
                 for (int j=0; j<4; j++) {
@@ -2810,6 +2794,7 @@ int main(int argc, char **argv) {
 //     attention_backward(kernel_num, d_dinp, d_dqkvr, d_dpreatt, d_datt, d_dvaccum,
 //                        d_dout, d_inp, d_qkvr, d_preatt, d_att, d_vaccum,
 //                        B, T, C, NH, block_size);
+
     flash_attention_backward(d_dinp, d_inp, d_dout, d_out, d_l, d_d, B, T, C, NH);
 
 //    for (int i=0; i <  B * T * 3 * C; i++) {
