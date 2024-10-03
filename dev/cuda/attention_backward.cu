@@ -1690,10 +1690,31 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             }
         }
 
+        if (thread_id == 0) {
+            printf("tS scaled\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 2; j++) {
+                    printf("%.2f ", tS[i][j]);
+                }
+                printf("\n");
+            }
+        }
+
+
         // compute P = exp(Q * K^T - l)
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                tP[i][j] = expf(tS[i][j] - rL[i]);
+            }
+        }
+
+        if (thread_id == 0) {
+            printf("tP\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 2; j++) {
+                    printf("%.2f ", tP[i][j]);
+                }
+                printf("\n");
             }
         }
 
@@ -1717,6 +1738,16 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
                 for (int j=0; j<4; j++) {
                     tdV[i][j] += rP[i] * rdO[j];
                 }
+            }
+        }
+
+        if (thread_id == 0) {
+            printf("tdV\n");
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    printf("%.2f ", tdV[i][j]);
+                }
+                printf("\n");
             }
         }
 
