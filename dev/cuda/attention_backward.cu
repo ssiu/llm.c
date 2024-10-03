@@ -1656,6 +1656,15 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         // dV
         //
 
+
+        // reset tS back to zero
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 2; j++) {
+                tS[i][j] = 0;
+            }
+        }
+
+
         // compute S = Q * K^T
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
             for (int i = 0; i < 4; i++) {
@@ -1791,6 +1800,14 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 //                 printf("\n");
 //             }
 //         }
+
+        // reset tdP back to zero
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 2; j++) {
+                tdP[i][j] = 0;
+            }
+        }
+
 
         // compute dP = dO * V^T
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
