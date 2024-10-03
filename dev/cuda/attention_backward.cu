@@ -1620,9 +1620,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     float (&tdS)[4][2] = tdP;
     // first load K, V into shared memory
     // everything is TILE_SIZE * HEAD_SIZE in row major
-    if (thread_id == 0) {
-        printf("%f\n", )
-    }
+
     for (int i=0; i< 4;i ++){
         for (int j=0; j< 4;j ++){
             sK(thread_row_copy + i, thread_col_copy +j ) = gK(thread_row_copy + i, thread_col_copy +j);
