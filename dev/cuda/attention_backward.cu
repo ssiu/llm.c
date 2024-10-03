@@ -1931,7 +1931,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
             printf("tdQ scaled\n");
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
-                    printf("%.2f ", tdQ[i][j]);
+                    printf("%.6f ", tdQ[i][j]);
                 }
                 printf("\n");
             }
