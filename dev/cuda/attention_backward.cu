@@ -2429,7 +2429,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 
     dim3 dimGrid1(NH, T / 32, B);
     dim3 dimBlock1(32);
-    int maxbytes1 = 65536;
+    int maxbytes1 = 98304;
     cudaFuncSetAttribute(flash_attention_backward_kernel1, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes1);
 
     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
