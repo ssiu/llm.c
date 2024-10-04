@@ -1631,7 +1631,11 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     }
 
     for (int q_tile = blockIdx.y; q_tile < T / TILE_SIZE; q_tile++) {
-        printf("blockIdx.y = %d, q_tile = %d, T/TILE_SIZE = %d\n", blockIdx.y, q_tile, T / TILE_SIZE);
+        if (thread_id ==0 ){
+
+            printf("blockIdx.y = %d, q_tile = %d, T/TILE_SIZE = %d\n", blockIdx.y, q_tile, T / TILE_SIZE);
+        }
+
         // load Q, dQ, dO into shared memory
         for (int i=0; i < 4;i ++){
             FLOAT4(sQ(thread_row_copy + i, thread_col_copy)) = FLOAT4(gQ(thread_row_copy + i, thread_col_copy));
