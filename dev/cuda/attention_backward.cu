@@ -1565,16 +1565,16 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     int o_increment = TILE_SIZE * NH * HS;
     int ld_increment = TILE_SIZE * NH;
 
-    float* gQ = &inp[q_global_offset_start];
+    float* gQ = &inp[q_global_offset_current];
     float* gK = &inp[k_global_offset_current];
     float* gV = &inp[v_global_offset_current];
-    float* gdO = &dout[o_global_offset_start];
-    float* gL = &l[ld_global_offset_start];
-    float* gD = &d[ld_global_offset_start];
+    float* gdO = &dout[o_global_offset_current];
+    float* gL = &l[ld_global_offset_current];
+    float* gD = &d[ld_global_offset_current];
 
 
     // output
-    float* gdQ = &dinp[q_global_offset_start];
+    float* gdQ = &dinp[q_global_offset_current];
     float* gdK = &dinp[k_global_offset_current];
     float* gdV = &dinp[v_global_offset_current];
 
