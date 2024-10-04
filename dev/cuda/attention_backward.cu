@@ -1930,7 +1930,7 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         if (thread_id == 0) {
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
-                    printf("blockIdx.y = %d, q_tile = %d, tdQ scaled = %.6f\n", blockIdx.y, q_tile, tdQ[i][j]);
+                    printf("blockIdx.y = %d, q_tile = %d, i = %d, j=%d, tdQ scaled = %.6f\n", blockIdx.y, i, j,q_tile, tdQ[i][j]);
                 }
             }
         }
