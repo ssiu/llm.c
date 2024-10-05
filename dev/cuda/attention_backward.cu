@@ -1631,10 +1631,10 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     }
 
     for (int q_tile = blockIdx.y; q_tile < T / TILE_SIZE; q_tile++) {
-        if (thread_id ==0 ){
-
-            printf("blockIdx.y = %d, q_tile = %d, T/TILE_SIZE = %d\n", blockIdx.y, q_tile, T / TILE_SIZE);
-        }
+//         if (thread_id ==0 ){
+//
+//             printf("blockIdx.y = %d, q_tile = %d, T/TILE_SIZE = %d\n", blockIdx.y, q_tile, T / TILE_SIZE);
+//         }
 
         // load Q, dQ, dO into shared memory
         for (int i=0; i < 4;i ++){
@@ -1932,13 +1932,13 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 
         // store dQ
 
-        if (thread_id == 0) {
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 4; j++) {
-                    printf("blockIdx.y = %d, q_tile = %d, i = %d, j=%d, tdQ scaled = %.6f\n", blockIdx.y, q_tile, i, j, tdQ[i][j]);
-                }
-            }
-        }
+//         if (thread_id == 0) {
+//             for (int i = 0; i < 4; i++) {
+//                 for (int j = 0; j < 4; j++) {
+//                     printf("blockIdx.y = %d, q_tile = %d, i = %d, j=%d, tdQ scaled = %.6f\n", blockIdx.y, q_tile, i, j, tdQ[i][j]);
+//                 }
+//             }
+//         }
 
 
         for (int i=0;i<4;i++) {
