@@ -1991,18 +1991,28 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 //     }
 
     // store dK to global memory
+
+//     for (int i=0;i<4;i++) {
+//         for (int j=0; j<4; j++) {
+//             gdK(thread_row_copy + i , thread_col_copy + j) = tdK[i][j];
+//         }
+//     }
+
     for (int i=0;i<4;i++) {
-        for (int j=0; j<4; j++) {
-            gdK(thread_row_copy + i , thread_col_copy + j) = tdK[i][j];
-        }
+        FLOAT4(gdK(thread_row_copy + i , thread_col_copy)) = FLOAT4(tdK[i][0]);
     }
 
-    // store dV to global memory
+
+//     // store dV to global memory
+//     for (int i=0;i<4;i++) {
+//         for (int j=0; j<4; j++) {
+//             gdV(thread_row_copy + i , thread_col_copy + j) = tdV[i][j];
+//         }
+//     }
     for (int i=0;i<4;i++) {
-        for (int j=0; j<4; j++) {
-            gdV(thread_row_copy + i , thread_col_copy + j) = tdV[i][j];
-        }
+        FLOAT4(gdV(thread_row_copy + i , thread_col_copy)) = FLOAT4(tdV[i][0]);
     }
+
 }
 
 
