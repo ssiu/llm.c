@@ -1628,10 +1628,8 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     // everything is TILE_SIZE * HEAD_SIZE in row major
 
     for (int i=0; i< 4;i ++){
-        for (int j=0; j< 4;j ++){
-            sK(thread_row_copy + i, thread_col_copy + j) = gK(thread_row_copy + i, thread_col_copy + j);
-            sV(thread_row_copy + i, thread_col_copy +j ) = gV(thread_row_copy + i, thread_col_copy + j);
-        }
+        FLOAT4(sK(thread_row_copy + i, thread_col_copy)) = FLOAT4(gK(thread_row_copy + i, thread_col_copy));
+        FLOAT4(sV(thread_row_copy + i, thread_col_copy)) = FLOAT4(gV(thread_row_copy + i, thread_col_copy));
     }
 
     for (int q_tile = blockIdx.y; q_tile < T / TILE_SIZE; q_tile++) {
@@ -2890,7 +2888,7 @@ int main(int argc, char **argv) {
 
     // hyperparameters
     int B = 4;
-    int T = 2048;
+    int T = 1024;
     int C = 768;
     int NH = 12;
 //    int B = 1;
