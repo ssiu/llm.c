@@ -2902,7 +2902,7 @@ int main(int argc, char **argv) {
 
     // execute the forward pass on the GPU
     const int block_size = 256;
-    attention_forward(d_out, d_vaccum, d_qkvr, d_preatt, d_att, d_inp, B, T, C, NH, block_size);
+    //attention_forward(d_out, d_vaccum, d_qkvr, d_preatt, d_att, d_inp, B, T, C, NH, block_size);
     flash_attention_forward(d_out, d_inp, d_l, B, T, C, NH);
 
     // check that preatt, att, and out match between the CPU and GPU versions
