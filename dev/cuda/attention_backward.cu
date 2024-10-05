@@ -1959,10 +1959,10 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
         __syncthreads();
 
         for (int i=0;i<4;i++) {
-            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add ), sdQ(thread_row_copy + i, thread_col_copy));
-            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32), sdQ(thread_row_copy + i, thread_col_copy + 32));
-            atomicAdd(&gdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add ), sdQ(thread_row_copy + i + 4, thread_col_copy));
-            atomicAdd(&gdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add + 32), sdQ(thread_row_copy + i + 4, thread_col_copy + 32));
+            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add ), sdQ(thread_row_atomic_add + i, thread_col_atomic_add));
+            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32), sdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32));
+            atomicAdd(&gdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add ), sdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add));
+            atomicAdd(&gdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add + 32), sdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add + 32));
         }
 
         gQ += qkv_increment;
