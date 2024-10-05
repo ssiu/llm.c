@@ -2553,8 +2553,8 @@ __global__ void softmax_autoregressive_backward_kernel8(float* dpreatt, const fl
 // use att to store log l + m
 void flash_attention_forward(float* out, float* inp, float* l,
                                 int B, int T, int C, int NH) {
-
-    int HS = C / NH; // head size
+    // head size
+    int HS = C / NH;
 
     // inp is (B, T, 3, NH, HS)
     // out is (B, T, NH, HS)
