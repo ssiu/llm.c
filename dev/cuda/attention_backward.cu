@@ -1602,6 +1602,10 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
     int thread_row_32_x_64 = warp_id * 8 + (lane_id / 16) * 4;
     int thread_col_32_x_64 = (lane_id % 16) * 4;
 
+    // offset for loading back to global memory
+    int thread_row_atomic_add = warp_id * 8;
+    int thread_col_atomic_add = lane_id;
+
     float rL[4];
     float rD[4];
 
@@ -1941,10 +1945,24 @@ __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float*
 //         }
 
 
+//         for (int i=0;i<4;i++) {
+//             for (int j=0; j<4; j++) {
+//                 atomicAdd(&gdQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
+//             }
+//         }
+
         for (int i=0;i<4;i++) {
             for (int j=0; j<4; j++) {
-                atomicAdd(&gdQ(thread_row_copy + i, thread_col_copy + j ), tdQ[i][j]);
+                sdQ(thread_row_copy + i, thread_col_copy + j) = tdQ[i][j];
             }
+        }
+        __syncthreads();
+
+        for (int i=0;i<4;i++) {
+            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add ), sdQ(thread_row_copy + i, thread_col_copy));
+            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32), sdQ(thread_row_copy + i, thread_col_copy + 32));
+            atomicAdd(&gdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add ), sdQ(thread_row_copy + i + 4, thread_col_copy));
+            atomicAdd(&gdQ(thread_row_atomic_add + i + 4, thread_col_atomic_add + 32), sdQ(thread_row_copy + i + 4, thread_col_copy + 32));
         }
 
         gQ += qkv_increment;
