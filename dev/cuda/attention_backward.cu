@@ -2059,23 +2059,18 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
     // blockDim.y = T
     // blockDim.z = B
 
-    // We first load
-    // K, V in shared memory
-    // Q, dO in registers
-    // compute S = Q * K^T
-    // compute dP = dO * V
-    // store P, dS in shared memory
+    // High level overview:
+    // 1. load K, V into shared memory
+    // 2. load Q, dO into registers
+    // 3. compute S = Q * K^T -> P and dP = dO * V^T -> dS in registers
+    // 4. store P, dO in shared memory
+    // 5. compute dV = P^T * dO in registers
+    // 6. store dS, Q in shared memory
+    // 7. compute dK = dS^T * Q and dQ = dS * K in registers
+    // Each Q, K, V, Q, P, dS, dO is a 64 x 64 matrix which uses 16KB of shared memory
+    // At any one point we only need to store 4 of these tiles in shared memory so we only need 64KB of shared memory,
+    // so that this kernel would work for any GPUs with SM >= 7.0
 
-    // next we overwrite V with dO in shared memory and compute dV = P^T * dO
-    // we rewrite dO with Q in shared memory and compute dK
-
-    // finally we rewrite Q with dQ and do atomic add to dQ in global memory
-
-    // K: 64 * 64 = 16KB
-    // V: 64 * 64 = 16KB
-    // P: 64 * 64 = 16KB
-    // dS: 64 x 64 = 16KB
-    // total shared memory = 64KB
 
     int thread_id = threadIdx.x;
     int warp_id = threadIdx.x / 32;
@@ -2116,13 +2111,15 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
     extern __shared__ float sharedMemory[];
 
-    float* sV  = &sharedMemory[0];
-    float* sdO = &sharedMemory[0];
-    float* sQ  = &sharedMemory[0];
-    float* sdQ = &sharedMemory[0];
-    float* sK  = &sharedMemory[1 * 64 * 64];
+    float* sK = &sharedMemory[0 * 64 * 64];
+    float* sV = &sharedMemory[1 * 64 * 64];
+
     float* sP = &sharedMemory[2 * 64 * 64];
-    float* sdS = &sharedMemory[3 * 64 * 64];
+    float* sdS = &sharedMemory[2 * 64 * 64];
+
+    float* sdO = &sharedMemory[3 * 64 * 64];
+    float* sQ  = &sharedMemory[3 * 64 * 64];
+    float* sdQ = &sharedMemory[3 * 64 * 64];
 
 
     // offset for loading from global to shared and register tiling
@@ -2136,7 +2133,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
 
     unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
-    int lane_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
+    //int lane_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
 
     float rL[4];
     float rD[4];
@@ -2183,8 +2180,9 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             rD[i] = gD(thread_row + i);
         }
 
+
         //
-        // compute S -> P
+        // compute S and P
         //
 
         // reset tS back to zero
@@ -2232,15 +2230,9 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        // store P to shared memory
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-               sP(thread_row + i, thread_col + j) = tP[i][j];
-            }
-        }
 
         //
-        // compute dP -> dS
+        // compute dP and dS
         //
 
         // reset tdP back to zero
@@ -2249,7 +2241,6 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
                 tdP[i][j] = 0;
             }
         }
-
 
         // compute dP = dO * V^T
         for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
@@ -2281,27 +2272,26 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        //store dS to shared memory
+
+        //
+        //  compute dV
+        //
+
+        // store P to shared memory
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-               sdS(thread_row + i, thread_col + j) = tdS[i][j];
+               sP(thread_row + i, thread_col + j) = tP[i][j];
             }
         }
 
-        __syncthreads();
-
-
-        //
-        // compute dV = P^T * dO
-        //
-
-        // store dO to shared memory
-        for (int i =0; i < 4; i++) {
-            FLOAT4(sdO(thread_row + i, thread_col)) = FLOAT4(tdO[i][0]);
+        // store dO in shared memory
+        for (int i=0; i < 4;i ++){
+            FLOAT4(sdO(thread_row+i, thread_col) = FLOAT4(tdO[i][0]);
         }
 
         __syncthreads();
 
+        // compute dV = P^T * dO
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
             for (int i = 0; i < 4;i++) {
                 rP[i] = sP_T(thread_row + i, k_fragment);
@@ -2319,6 +2309,12 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
         //
         // dK
         //
+
+        //store dS to shared memory
+        for (int i = 0; i < 4; i++) {
+
+           FLOAT4(sdS(thread_row + i, thread_col)) = FLOAT4(tdS[i][0]);
+        }
 
         //store Q to shared memory
         for (int i =0; i<4; i++) {
@@ -2341,8 +2337,6 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
                 }
             }
         }
-
-        __syncthreads();
 
 
         //
@@ -2377,8 +2371,6 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
         }
 
         // store dQ
-
-
         for (int i=0;i<4;i++) {
             for (int j=0; j<4; j++) {
                 sdQ(thread_row + i, thread_col + j) = tdQ[i][j];
