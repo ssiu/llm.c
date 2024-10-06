@@ -2179,8 +2179,8 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
         // load l, d into registers
         for (int i=0; i< 4;i ++){
-            rL[i] = gL(thread_row_copy + i);
-            rD[i] = gD(thread_row_copy + i);
+            rL[i] = gL(thread_row + i);
+            rD[i] = gD(thread_row + i);
         }
 
         //
@@ -2297,7 +2297,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
         // store dO to shared memory
         for (int i =0; i < 4; i++) {
-            sdP(thread_row + i, thread_col) = FLOAT4(tdO[i][0]);
+            sdO(thread_row + i, thread_col) = FLOAT4(tdO[i][0]);
         }
 
         __syncthreads();
@@ -2322,7 +2322,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
         //store Q to shared memory
         for (int i =0; i<4; i++) {
-            sQ(thread_row + i, thread_col) = FLOAT4(tQ[i][0]);
+            FLOAT4(sQ(thread_row + i, thread_col)) = FLOAT4(tQ[i][0]);
         }
 
         __syncthreads();
@@ -2331,7 +2331,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
             for (int i = 0; i < 4; i++) {
-                rdS[i] = sdS_T(thread_row_ + i, k_fragment);
+                rdS[i] = sdS_T(thread_row + i, k_fragment);
                 rQ[i] = sQ(k_fragment, thread_col + i);
             }
 
@@ -2359,8 +2359,8 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
-                rdS[i] = sdS(thread_row_32_x_64 + i, k_fragment);
-                rK[i] = sK(k_fragment, thread_col_32_x_64 + i);
+                rdS[i] = sdS(thread_row + i, k_fragment);
+                rK[i] = sK(k_fragment, thread_col + i);
             }
 
             for (int i=0;i<4;i++) {
@@ -2412,13 +2412,13 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
     // store dK to global memory
 
     for (int i=0;i<4;i++) {
-        FLOAT4(gdK(thread_row_copy + i , thread_col_copy)) = FLOAT4(tdK[i][0]);
+        FLOAT4(gdK(thread_row + i , thread_col)) = FLOAT4(tdK[i][0]);
     }
 
 
 //     // store dV to global memory
     for (int i=0;i<4;i++) {
-        FLOAT4(gdV(thread_row_copy + i , thread_col_copy)) = FLOAT4(tdV[i][0]);
+        FLOAT4(gdV(thread_row + i , thread_col)) = FLOAT4(tdV[i][0]);
     }
 }
 
@@ -3302,14 +3302,14 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-    int B = 4;
-    int T = 1024;
-    int C = 768;
-    int NH = 12;
-//    int B = 1;
-//    int T = 64;
-//    int C = 64;
-//    int NH = 1;
+//     int B = 4;
+//     int T = 1024;
+//     int C = 768;
+//     int NH = 12;
+   int B = 1;
+   int T = 1024;
+   int C = 64;
+   int NH = 1;
 
     // read kernel_num from command line
     int kernel_num = 1;
