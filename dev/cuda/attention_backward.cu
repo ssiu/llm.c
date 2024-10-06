@@ -2297,7 +2297,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
         // store dO to shared memory
         for (int i =0; i < 4; i++) {
-            sdO(thread_row + i, thread_col) = FLOAT4(tdO[i][0]);
+            FLOAT4(sdO(thread_row + i, thread_col)) = FLOAT4(tdO[i][0]);
         }
 
         __syncthreads();
