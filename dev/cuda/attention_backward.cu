@@ -2180,9 +2180,9 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
                 for (int j=0;j<64;j++) {
                     printf("%f ", sQ(i,j));
                 }
-                print("\n");
+                printf("\n");
             }
-            print("==========");
+            printf("==========");
         }
 
         // load l, d into registers
@@ -2714,9 +2714,9 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
                 for (int j=0;j<64;j++) {
                     printf("%f ", sQ(i,j));
                 }
-                print("\n");
+                printf("\n");
             }
-            print("==========");
+            printf("==========");
         }
 
 
