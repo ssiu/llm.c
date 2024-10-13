@@ -2214,7 +2214,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 1) {
+        if (blockIdx.y == 0 && thread_id == 16) {
             printf("kernel 2, tS, q_tile = %d\n", q_tile);
             for (int i=0;i<4;i++) {
                 for (int j=0;j<4;j++) {
@@ -2241,7 +2241,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 1) {
+        if (blockIdx.y == 0 && thread_id == 16) {
             printf("kernel 2, tP, q_tile = %d\n", q_tile);
             for (int i=0;i<4;i++) {
                 for (int j=0;j<4;j++) {
