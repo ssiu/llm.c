@@ -2309,17 +2309,17 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
 
             if (blockIdx.y == 0 && thread_id == 0 && k_fragment == 0) {
-                printf("rP = ")
+                printf("rP = ");
                 for (int i = 0; i < 4; i++) {
                     printf("%d ", rP[i]);
                 }
-                printf("\n")
+                printf("\n");
 
-                printf("rdO = ")
+                printf("rdO = ");
                 for (int i = 0; i < 4; i++) {
                     printf("%d ", rdO[i]);
                 }
-                printf("\n")
+                printf("\n");
 
             }
 
@@ -2786,17 +2786,17 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
                 }
 
                 if (blockIdx.y == 0 && thread_id == 0 && k_fragment == 0) {
-                    printf("rP = ")
+                    printf("rP = ");
                     for (int i = 0; i < 4; i++) {
                         printf("%d ", rP[i]);
                     }
-                    printf("\n")
+                    printf("\n");
 
-                    printf("rdO = ")
+                    printf("rdO = ");
                     for (int i = 0; i < 4; i++) {
                         printf("%d ", rdO[i]);
                     }
-                    printf("\n")
+                    printf("\n");
 
                 }
 
