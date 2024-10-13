@@ -2214,16 +2214,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 16) {
-            printf("kernel 2, tS, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tS[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 16) {
+//             printf("kernel 2, tS, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         //rescale S by 1/sqrt(HS)
         for (int i = 0; i < 4; i++) {
@@ -2241,16 +2241,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 16) {
-            printf("kernel 2, tP, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tP[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 16) {
+//             printf("kernel 2, tP, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         //
         // compute dP and dS
@@ -2285,6 +2285,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
+        if (blockIdx.y == 0 && thread_id == 0) {
+            printf("kernel 2, tdP, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdP[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         // compute dS = P \circ (dP - D)
         for (int i = 0; i < 4; i++) {
@@ -2293,6 +2303,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
+        if (blockIdx.y == 0 && thread_id == 0) {
+            printf("kernel 2, tdS, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdS[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         //
         //  compute dV
@@ -2342,16 +2362,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 0) {
-            printf("kernel 2, tdV, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tdV[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 0) {
+//             printf("kernel 2, tdV, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tdV[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
 
         __syncthreads();
@@ -2658,6 +2678,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         // load l, d into registers
         // wrong row, i think it should be thread_row_64_x_128?
         // original was thread_row_64_x_64
+        // check rD, might still be wrong
         for (int i=0; i< 4;i ++){
             rL[i] = gL(thread_row_64_x_128 + i);
             rD[i] = gD(thread_row_64_x_128 + i);
@@ -2702,16 +2723,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 1) {
-            printf("kernel 3, tS, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tS[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 1) {
+//             printf("kernel 3, tS, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         //rescale S by 1/sqrt(HS)
         for (int i = 0; i < 4; i++) {
@@ -2729,16 +2750,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 1) {
-            printf("kernel 3, tP, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tP[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 1) {
+//             printf("kernel 3, tP, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
 
         //
@@ -2786,12 +2807,33 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
+        if (blockIdx.y == 0 && thread_id == 0) {
+            printf("kernel 3, tdP, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdP[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         // compute dS = P \circ (dP - D)
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 8; j++) {
                 tdS[i][j] = tP[i][j] * (tdP[i][j] - rD[i]);
             }
+        }
+
+        if (blockIdx.y == 0 && thread_id == 0) {
+            printf("kernel 3, tdS, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdS[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
         }
 
 
@@ -2833,16 +2875,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 0) {
-            printf("kernel 3, tdV, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tdV[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 0) {
+//             printf("kernel 3, tdV, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tdV[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
 
         //
