@@ -2417,30 +2417,30 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
 #undef TILE_SIZE
 #undef HEAD_SIZE
-#undef gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
-#undef gK(i,j) gK[(i) * 3 * NH * HS + (j)]
-#undef gV(i,j) gV[(i) * 3 * NH * HS + (j)]
+#undef gQ
+#undef gK
+#undef gV
 
-#undef gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
-#undef gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
-#undef gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
+#undef gdQ
+#undef gdK
+#undef gdV
 
-#undef gdO(i,j) gdO[(i) * 1 * NH * HS + (j)]
-#undef gL(i) gL[(i) * NH]
-#undef gD(i) gD[(i) * NH]
+#undef gdO
+#undef gL
+#undef gD
 
-#undef sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
-#undef sK(i,j) sK[(i) * HEAD_SIZE + (j)]
-#undef sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
-#undef sV(i,j) sV[(i) * HEAD_SIZE + (j)]
-#undef sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
+#undef sQ
+#undef sK
+#undef sK_T
+#undef sV
+#undef sV_T
 
-#undef sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
-#undef sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
-#undef sP(i,j) sP[(i) * TILE_SIZE + (j)]
-#undef sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
-#undef sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
-#undef sdS_T(i,j) sdS[(i) + (j) * TILE_SIZE]
+#undef sdO
+#undef sdQ
+#undef sP
+#undef sP_T
+#undef sdS
+#undef sdS_T
 
 
 #define Q_TILE_SIZE 64
@@ -2466,7 +2466,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 // #define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
 //
 // #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
-// #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
+#define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 // #define sP(i,j) sP[(i) * TILE_SIZE + (j)]
 // #define sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
 #define sdS(i,j) sdS[(i) * KV_TILE_SIZE + (j)]
@@ -2826,8 +2826,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32), sdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32));
         }
 
-        gQ += qkv_increment;
-        gdQ += qkv_increment;
+        gQ += q_increment;
+        gdQ += q_increment;
         gdO += o_increment;
         gL += ld_increment;
         gD += ld_increment;
