@@ -2534,6 +2534,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
     float* sdO = sQ + Q_TILE_SIZE * Q_TILE_SIZE;
     float* sK = sdO + Q_TILE_SIZE * Q_TILE_SIZE;
     float* sdS = sQ;
+    float* sdQ = sQ;
 
     // offset for loading from global to shared
     int thread_row_copy = warp_id * 8 + (lane_id / 16) * 4;
@@ -2606,6 +2607,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
+
+        __syncthreads();
 
         // load l, d into registers
         for (int i=0; i< 4;i ++){
@@ -2746,7 +2749,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         }
 
 
-        __syncthreads();
+
 
         //
         // dK
@@ -2771,6 +2774,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
+        __syncthreads();
 
         //
         // compute dQ
@@ -2790,6 +2794,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
                 sdS(thread_row_64_x_128 + i, thread_col_64_x_128 + j + 8) = tdS[i][j + 4];
             }
         }
+
+        __syncthreads();
 
         for (int k_fragment = 0; k_fragment < KV_TILE_SIZE; k_fragment++) {
 
@@ -3473,7 +3479,7 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     dim3 dimBlock3(256);
     int maxbytes2 = 65536;
     cudaFuncSetAttribute(flash_attention_backward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
-    flash_attention_backward_kernel2<<<dimGrid3, dimBlock3, maxbytes3>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    flash_attention_backward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
 
     cudaCheck(cudaGetLastError());
