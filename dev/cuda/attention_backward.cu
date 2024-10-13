@@ -2230,6 +2230,15 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
+        if (blockIdx ==0 && thread_id == 0) {
+            printf("kernel 2")
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tP[i][j]);
+                }
+                printf("\n")
+            }
+        }
 
         //
         // compute dP and dS
@@ -2563,8 +2572,6 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 
     unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
 
-
-
     float rL[4];
     float rD[4];
 //
@@ -2597,8 +2604,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         FLOAT4(tV[i+4][0]) = FLOAT4(gV(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
     }
 
-
-
+    __syncthreads();
 
     for (int q_tile = 2 * blockIdx.y; q_tile < T / Q_TILE_SIZE; q_tile++) {
 
@@ -2608,14 +2614,13 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
 
-        __syncthreads();
-
         // load l, d into registers
         for (int i=0; i< 4;i ++){
             rL[i] = gL(thread_row_64_x_64 + i);
             rD[i] = gD(thread_row_64_x_64 + i);
         }
 
+        __syncthreads();
 
         //
         // compute S and P
@@ -2667,6 +2672,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 8; j++) {
                tP[i][j] = expf(tS[i][j] - rL[i]);
+            }
+        }
+
+        if (blockIdx ==0 && thread_id == 0) {
+            printf("kernel 3")
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tP[i][j]);
+                }
+                printf("\n")
             }
         }
 
@@ -3468,11 +3483,11 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 //     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1, maxbytes1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
 
-//     dim3 dimGrid2(NH, T / 64, B);
-//     dim3 dimBlock2(256);
-//     int maxbytes2 = 65536;
-//     cudaFuncSetAttribute(flash_attention_backward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
-//     flash_attention_backward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    dim3 dimGrid2(NH, T / 64, B);
+    dim3 dimBlock2(256);
+    int maxbytes2 = 65536;
+    cudaFuncSetAttribute(flash_attention_backward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
+    flash_attention_backward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
 
     dim3 dimGrid3(NH, T / 128, B);
