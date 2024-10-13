@@ -2465,7 +2465,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 // #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
 // #define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
 //
-// #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
+#define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 // #define sP(i,j) sP[(i) * TILE_SIZE + (j)]
 // #define sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
