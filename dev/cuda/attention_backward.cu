@@ -2400,7 +2400,20 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
                 rdS[i] = sdS_T(thread_row + i, k_fragment);
                 rQ[i] = sQ(k_fragment, thread_col + i);
             }
+            if (blockIdx.y == 0 && thread_id == 0 ) {
+                printf("kernel 2, k_fragment = %d\n", k_fragment);
+                printf("rdS = ");
+                for (int i = 0; i < 4; i++) {
+                    printf("%f ", rdS[i]);
+                }
+                printf("\n");
 
+                printf("rQ = ");
+                for (int i = 0; i < 4; i++) {
+                    printf("%f ", rQ[i]);
+                }
+                printf("\n");
+            }
             for (int i = 0; i < 4; i++) {
                 for (int j=0; j<4; j++) {
                     tdK[i][j] += rdS[i] * rQ[j];
@@ -2408,7 +2421,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-
+        if (blockIdx.y == 0 && thread_id == 0) {
+            printf("kernel 2, tdK, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdK[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
         //
         // compute dQ
         //
@@ -2901,13 +2923,37 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
                     rdS[i+4] = __shfl_sync(mask, tdS[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
                     rQ[i] = sQ(k_fragment, thread_col_128_x_64 + i);
                 }
+                if (blockIdx.y == 0 && thread_id == 0 ) {
+                    printf("kernel 3, k_fragment = %d\n", k_fragment);
+                    printf("rdS = ");
+                    for (int i = 0; i < 4; i++) {
+                        printf("%f ", rdS[i]);
+                    }
+                    printf("\n");
 
+                    printf("rQ = ");
+                    for (int i = 0; i < 4; i++) {
+                        printf("%f ", rQ[i]);
+                    }
+                    printf("\n");
+                }
                 for (int i = 0; i < 8; i++) {
                     for (int j = 0; j < 4; j++) {
                         tdK[i][j] += rdS[i] * rQ[j];
                     }
                 }
             }
+        }
+
+        if (blockIdx.y == 0 && thread_id == 0) {
+            printf("kernel 3, tdK, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdK[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
         }
 
         __syncthreads();
