@@ -2800,8 +2800,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         for (int k_fragment = 0; k_fragment < KV_TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
-                rdS[i] = sdS(thread_row_64_x_128 + i, k_fragment);
-                rK[i] = sK(k_fragment, thread_col_64_x_128 + i);
+                rdS[i] = sdS(thread_row_64_x_64 + i, k_fragment);
+                rK[i] = sK(k_fragment, thread_col_64_x_64 + i);
             }
 
             for (int i=0;i<4;i++) {
