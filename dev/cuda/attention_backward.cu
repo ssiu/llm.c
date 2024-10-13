@@ -2174,7 +2174,7 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             FLOAT4(tdO[i][0]) = FLOAT4(gdO(thread_row + i, thread_col));
         }
 
-        if (blockIdx.y==0 && t thread_id ==0 and q_tile == 0){
+        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
             print("kernel 2");
             for (int i = 0; i < 64; i++) {
                 for (int j=0;j<64;j++) {
@@ -2708,7 +2708,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
 
-        if (blockIdx.y==0 && t thread_id ==0 and q_tile == 0){
+        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
             print("kernel 3");
             for (int i = 0; i < 64; i++) {
                 for (int j=0;j<64;j++) {
