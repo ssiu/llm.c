@@ -2656,9 +2656,11 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         }
 
         // load l, d into registers
+        // wrong row, i think it should be thread_row_64_x_128?
+        // original was thread_row_64_x_64
         for (int i=0; i< 4;i ++){
-            rL[i] = gL(thread_row_64_x_64 + i);
-            rD[i] = gD(thread_row_64_x_64 + i);
+            rL[i] = gL(thread_row_64_x_128 + i);
+            rD[i] = gD(thread_row_64_x_128 + i);
         }
 
         __syncthreads();
