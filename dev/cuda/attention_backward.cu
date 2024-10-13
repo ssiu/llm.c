@@ -2230,16 +2230,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-//         if (blockIdx.y == 0 && thread_id == 0) {
-//             printf("kernel 2, tP, q_tile = %d\n", q_tile);
-//             for (int i=0;i<4;i++) {
-//                 for (int j=0;j<4;j++) {
-//                     printf("%f ", tP[i][j]);
-//                 }
-//                 printf("\n");
-//             }
-//             printf("==========\n");
-//         }
+        if (blockIdx.y == 0 && thread_id == 1) {
+            printf("kernel 2, tP, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tP[i][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         //
         // compute dP and dS
@@ -2308,21 +2308,21 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
                 rdO[i] = sdO(k_fragment, thread_col + i);
             }
 
-            if (blockIdx.y == 0 && thread_id == 1 ) {
-                printf("kernel 2, k_fragment = %d\n", k_fragment);
-                printf("rP = ");
-                for (int i = 0; i < 4; i++) {
-                    printf("%f ", rP[i]);
-                }
-                printf("\n");
-
-                printf("rdO = ");
-                for (int i = 0; i < 4; i++) {
-                    printf("%f ", rdO[i]);
-                }
-                printf("\n");
-
-            }
+//             if (blockIdx.y == 0 && thread_id == 0 ) {
+//                 printf("kernel 2, k_fragment = %d\n", k_fragment);
+//                 printf("rP = ");
+//                 for (int i = 0; i < 4; i++) {
+//                     printf("%f ", rP[i]);
+//                 }
+//                 printf("\n");
+//
+//                 printf("rdO = ");
+//                 for (int i = 0; i < 4; i++) {
+//                     printf("%f ", rdO[i]);
+//                 }
+//                 printf("\n");
+//
+//             }
 
             for (int i=0; i<4; i++) {
                 for (int j=0; j<4; j++) {
