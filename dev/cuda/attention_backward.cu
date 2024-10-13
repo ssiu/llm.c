@@ -2174,17 +2174,6 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             FLOAT4(tdO[i][0]) = FLOAT4(gdO(thread_row + i, thread_col));
         }
 
-        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
-            printf("kernel 2\n");
-            for (int i = 0; i < 64; i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%f ", sQ(i,j));
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
-
         // load l, d into registers
         for (int i=0; i< 4;i ++){
             rL[i] = gL(thread_row + i);
@@ -2403,6 +2392,17 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
         }
 
         __syncthreads();
+
+        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
+            printf("kernel 2\n");
+            for (int i = 0; i < 64; i++) {
+                for (int j=0;j<64;j++) {
+                    printf("%f ", sQ(i,j));
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         // compute dK = dS^T * Q
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
