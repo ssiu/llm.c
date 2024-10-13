@@ -2175,14 +2175,14 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
         }
 
         if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
-            printf("kernel 2");
+            printf("kernel 2\n");
             for (int i = 0; i < 64; i++) {
                 for (int j=0;j<64;j++) {
                     printf("%f ", sQ(i,j));
                 }
                 printf("\n");
             }
-            printf("==========");
+            printf("==========\n");
         }
 
         // load l, d into registers
@@ -2709,14 +2709,14 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         }
 
         if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
-            printf("kernel 3");
+            printf("kernel 3\n");
             for (int i = 0; i < 64; i++) {
                 for (int j=0;j<64;j++) {
                     printf("%f ", sQ(i,j));
                 }
                 printf("\n");
             }
-            printf("==========");
+            printf("==========\n");
         }
 
 
