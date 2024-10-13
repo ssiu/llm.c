@@ -2708,16 +2708,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
 
-        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
-            printf("kernel 3\n");
-            for (int i = 0; i < 64; i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%f ", sQ(i,j));
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+
 
 
 
@@ -2731,6 +2722,17 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         }
 
         __syncthreads();
+
+        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
+            printf("kernel 3\n");
+            for (int i = 0; i < 64; i++) {
+                for (int j=0;j<64;j++) {
+                    printf("%f ", sQ(i,j));
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         //
         // compute S and P
