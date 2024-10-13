@@ -2727,6 +2727,17 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             printf("kernel 3\n");
             for (int i = 0; i < 64; i++) {
                 for (int j=0;j<64;j++) {
+                    printf("%f ", gQ(i,j));
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
+
+        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
+            printf("kernel 3\n");
+            for (int i = 0; i < 64; i++) {
+                for (int j=0;j<64;j++) {
                     printf("%f ", sQ(i,j));
                 }
                 printf("\n");
