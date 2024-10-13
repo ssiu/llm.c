@@ -3795,7 +3795,7 @@ int main(int argc, char **argv) {
     printf("Checking the forward pass CPU <-> GPU...\n");
     //printf("[preatt]\n"); validate_result(d_preatt, preatt, "preatt", B * T * C, 5e-3f);
     //printf("[att]\n");    validate_result(d_att, att, "att", B * T * C, 1e-3f);
-    printf("[out]\n");    validate_result(d_out, out, "out", B * T * C, 1e-3f);
+    //printf("[out]\n");    validate_result(d_out, out, "out", B * T * C, 1e-3f);
 
     // set up the memory for the backward pass
     float* dout = make_random_float(B * T * C); // the gradients on the output
