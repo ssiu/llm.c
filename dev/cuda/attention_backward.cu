@@ -2650,10 +2650,6 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
     float* sdS = sQ;
     float* sdQ = sQ;
 
-    // offset for loading from global to shared
-    int thread_row_copy = warp_id * 8 + (lane_id / 16) * 4;
-    int thread_col_copy = (lane_id % 16) * 4;
-
     // offset for register tiling for dK, dV
     int thread_row_128_x_64 = warp_id * 16 + (lane_id / 16) * 4;
     int thread_col_128_x_64 = (lane_id % 16) * 4;
@@ -2663,12 +2659,6 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 
     int thread_row_64_x_64 = warp_id * 8 + (lane_id / 16) * 4;
     int thread_col_64_x_64 = (lane_id % 16) * 4;
-
-
-    // offset for register tiling for S and dP
-    int thread_row_reg_tiling = thread_col_copy;
-    int thread_col_reg_tiling = thread_row_copy;
-
 
 
     // offset for atomic add for dQ
