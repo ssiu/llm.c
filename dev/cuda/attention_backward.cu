@@ -2930,7 +2930,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
                 int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
                 for (int i = 0; i < 4; i++) {
                     rP[i] = __shfl_sync(mask, tP[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
-                    rP[i+4] = __shfl_sync(mask, tP[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
+                    rP[i+4] = __shfl_sync(mask, tP[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
                     rdO[i] = sdO(k_fragment, thread_col_128_x_64 + i);
                 }
 
@@ -2980,7 +2980,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
                 int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
                 for (int i = 0; i < 4; i++) {
                     rdS[i] = __shfl_sync(mask, tdS[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
-                    rdS[i+4] = __shfl_sync(mask, tdS[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
+                    rdS[i+4] = __shfl_sync(mask, tdS[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
                     rQ[i] = sQ(k_fragment, thread_col_128_x_64 + i);
                 }
 //                 if (blockIdx.y == 0 && thread_id == 0 ) {
