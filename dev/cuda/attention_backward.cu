@@ -2709,7 +2709,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
         FLOAT4(tV[i+4][0]) = FLOAT4(gV(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
     }
 
-    __syncthreads();
+    //__syncthreads();
 
     for (int q_tile = 2 * blockIdx.y; q_tile < T / Q_TILE_SIZE; q_tile++) {
 
@@ -2718,7 +2718,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
-        __syncthreads();
+        //__syncthreads();
 //         if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0) {
 //             for (int i=0; i < 4;i ++){
 //                 for (int j=0;j<4;j++) {
