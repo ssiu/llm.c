@@ -3107,7 +3107,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
     }
 
 
-//     // store dV to global memory
+    // store dV to global memory
     for (int i=0;i<4;i++) {
         FLOAT4(gdV(thread_row_128_x_64 + i ,thread_col_128_x_64)) = FLOAT4(tdV[i][0]);
         FLOAT4(gdV(thread_row_128_x_64 + 8 + i ,thread_col_128_x_64)) = FLOAT4(tdV[i+4][0]);
