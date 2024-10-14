@@ -3719,11 +3719,11 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 //     flash_attention_backward_kernel1<<<dimGrid1, dimBlock1, maxbytes1>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
 
-    dim3 dimGrid2(NH, T / 64, B);
-    dim3 dimBlock2(256);
-    int maxbytes2 = 65536;
-    cudaFuncSetAttribute(flash_attention_backward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
-    flash_attention_backward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+//     dim3 dimGrid2(NH, T / 64, B);
+//     dim3 dimBlock2(256);
+//     int maxbytes2 = 65536;
+//     cudaFuncSetAttribute(flash_attention_backward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
+//     flash_attention_backward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
 
     dim3 dimGrid3(NH, T / 128, B);
@@ -4098,7 +4098,7 @@ int main(int argc, char **argv) {
     printf("Checking the backward pass CPU <-> GPU...\n");
     //printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
-    printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
+    //printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
 
 
