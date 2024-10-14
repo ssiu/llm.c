@@ -2285,16 +2285,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
-            printf("kernel 2, tdP, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tdP[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
+//             printf("kernel 2, tdP, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tdP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         // compute dS = P \circ (dP - D)
         for (int i = 0; i < 4; i++) {
@@ -2303,16 +2303,16 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
-            printf("kernel 2, tdS, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tdS[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
+//             printf("kernel 2, tdS, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tdS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         //
         //  compute dV
@@ -2889,16 +2889,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
-            printf("kernel 3, tdP, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tdP[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
+//             printf("kernel 3, tdP, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tdP[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         // compute dS = P \circ (dP - D)
         for (int i = 0; i < 4; i++) {
@@ -2907,16 +2907,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
-        if (blockIdx.y == 0 && thread_id == 32 && q_tile == 0) {
-            printf("kernel 3, tdS, q_tile = %d\n", q_tile);
-            for (int i=0;i<4;i++) {
-                for (int j=0;j<4;j++) {
-                    printf("%f ", tdS[i][j]);
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y == 0 && thread_id == 0 && q_tile == 0) {
+//             printf("kernel 3, tdS, q_tile = %d\n", q_tile);
+//             for (int i=0;i<4;i++) {
+//                 for (int j=0;j<4;j++) {
+//                     printf("%f ", tdS[i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
 
         //
@@ -3005,16 +3005,16 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             }
         }
 
-//         if (blockIdx.y == 0 && thread_id == 0) {
-//             printf("kernel 3, tdK, q_tile = %d\n", q_tile);
-//             for (int i=0;i<4;i++) {
-//                 for (int j=0;j<4;j++) {
-//                     printf("%f ", tdK[i][j]);
-//                 }
-//                 printf("\n");
-//             }
-//             printf("==========\n");
-//         }
+        if (blockIdx.y == 0 && thread_id == 0 && q_tile == 0) {
+            printf("kernel 3, tdK, q_tile = %d\n", q_tile);
+            for (int i=0;i<4;i++) {
+                for (int j=0;j<4;j++) {
+                    printf("%f ", tdK[i + 4][j]);
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
 
         __syncthreads();
 
@@ -4089,7 +4089,7 @@ int main(int argc, char **argv) {
     printf("Checking the backward pass CPU <-> GPU...\n");
     //printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
-    //printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
+    printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
 
 
