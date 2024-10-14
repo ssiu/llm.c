@@ -317,7 +317,7 @@ void validate_result(D* device_result, const T* cpu_reference, const char* name,
 #else
     float epsilon = 0.079;
 #endif
-    for (int i = 0; i < num_elements; i+=128) {
+    for (int i = 64; i < num_elements; i+=128) {
         // Skip masked elements
         if(!isfinite(cpu_reference[i]))
             continue;
