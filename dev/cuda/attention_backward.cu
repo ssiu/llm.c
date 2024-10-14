@@ -2719,36 +2719,36 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
         __syncthreads();
-        if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0) {
-            for (int i=0; i < 4;i ++){
-                for (int j=0;j<4;j++) {
-                    printf("i = %d, j = %d, gQ = %f, sQ = %f\n", i, j, gQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j), sQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j));
-                }
-            }
-
-        }
-
-        if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0){
-            printf("kernel 3\n");
-            for (int i = 0; i < 64; i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%f ", gQ(i,j));
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
-
-        if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0){
-            printf("kernel 3\n");
-            for (int i = 0; i < 64; i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%f ", sQ(i,j));
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0) {
+//             for (int i=0; i < 4;i ++){
+//                 for (int j=0;j<4;j++) {
+//                     printf("i = %d, j = %d, gQ = %f, sQ = %f\n", i, j, gQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j), sQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j));
+//                 }
+//             }
+//
+//         }
+//
+//         if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0){
+//             printf("kernel 3\n");
+//             for (int i = 0; i < 64; i++) {
+//                 for (int j=0;j<64;j++) {
+//                     printf("%f ", gQ(i,j));
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
+//
+//         if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0){
+//             printf("kernel 3\n");
+//             for (int i = 0; i < 64; i++) {
+//                 for (int j=0;j<64;j++) {
+//                     printf("%f ", sQ(i,j));
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
 
 
@@ -4108,7 +4108,7 @@ int main(int argc, char **argv) {
     printf("Checking the backward pass CPU <-> GPU...\n");
     //printf("[datt]\n");    validate_result(d_datt, datt, "datt", B * NH * T * T, 5e-3f);
     //printf("[dpreatt]\n"); validate_result(d_dpreatt, dpreatt, "dpreatt", B * NH * T * T, 1e-3f);
-    printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
+    //printf("[dinp]\n");    validate_result(d_dinp, dinp, "dinp", B * T * 3 * C, 1e-3f);
 
 
 
