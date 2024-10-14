@@ -2718,7 +2718,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
-        //__syncthreads();
+        __syncthreads();
 //         if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0) {
 //             for (int i=0; i < 4;i ++){
 //                 for (int j=0;j<4;j++) {
@@ -2763,7 +2763,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             rD[i] = gD(thread_row_64_x_128 + i);
         }
 
-        __syncthreads();
+        //__syncthreads();
 
 //         if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
 //             printf("kernel 3\n");
