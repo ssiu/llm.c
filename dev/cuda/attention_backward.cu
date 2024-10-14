@@ -2393,27 +2393,27 @@ __global__ void flash_attention_backward_kernel2(float* dinp, float* inp, float*
 
         __syncthreads();
 
-        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
-            printf("kernel 2\n");
-            for (int i = 0; i < 64; i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%f ", gQ(i,j));
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
-
-        if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
-            printf("kernel 2\n");
-            for (int i = 0; i < 64; i++) {
-                for (int j=0;j<64;j++) {
-                    printf("%f ", sQ(i,j));
-                }
-                printf("\n");
-            }
-            printf("==========\n");
-        }
+//         if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
+//             printf("kernel 2\n");
+//             for (int i = 0; i < 64; i++) {
+//                 for (int j=0;j<64;j++) {
+//                     printf("%f ", gQ(i,j));
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
+//
+//         if (blockIdx.y==0 && thread_id ==0 and q_tile == 0){
+//             printf("kernel 2\n");
+//             for (int i = 0; i < 64; i++) {
+//                 for (int j=0;j<64;j++) {
+//                     printf("%f ", sQ(i,j));
+//                 }
+//                 printf("\n");
+//             }
+//             printf("==========\n");
+//         }
 
         // compute dK = dS^T * Q
         for (int k_fragment = 0; k_fragment < TILE_SIZE; k_fragment++) {
@@ -2718,13 +2718,38 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
             FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
+        __syncthreads();
         if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0) {
             for (int i=0; i < 4;i ++){
                 for (int j=0;j<4;j++) {
                     printf("i = %d, j = %d, gQ = %f, sQ = %f\n", i, j, gQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j), sQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j));
                 }
             }
+
         }
+
+        if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0){
+            printf("kernel 3\n");
+            for (int i = 0; i < 64; i++) {
+                for (int j=0;j<64;j++) {
+                    printf("%f ", gQ(i,j));
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
+
+        if (blockIdx.y ==0 && q_tile==0 && warp_id==1 && lane_id==0){
+            printf("kernel 3\n");
+            for (int i = 0; i < 64; i++) {
+                for (int j=0;j<64;j++) {
+                    printf("%f ", sQ(i,j));
+                }
+                printf("\n");
+            }
+            printf("==========\n");
+        }
+
 
 
 
