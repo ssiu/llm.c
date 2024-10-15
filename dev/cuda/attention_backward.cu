@@ -3125,8 +3125,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 // #define HEAD_SIZE 64
 
 #define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
-#define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
-#define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
+#define sK(i,j) sK[(i) + (j) * KV_TILE_SIZE]
+#define sK_T(i,j) sK[(i) * KV_TILE_SIZE + (j)]
 //
 // #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
 // #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
@@ -3239,8 +3239,12 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     // everything is TILE_SIZE * HEAD_SIZE in row major
 
     for (int i=0; i < 4;i ++){
-        FLOAT4(sK(thread_row_128_x_64 + i, thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + i, thread_col_128_x_64));
-        FLOAT4(sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
+        for (j=0;j<4;j++) {
+            sK(thread_row_128_x_64 + i, thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + i, thread_col_128_x_64 + j);
+            sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64 + j);
+        }
+//         FLOAT4(sK(thread_row_128_x_64 + i, thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + i, thread_col_128_x_64));
+//         FLOAT4(sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
         FLOAT4(tV[i][0]) = FLOAT4(gV(thread_row_128_x_64 + i, thread_col_128_x_64));
         FLOAT4(tV[i+4][0]) = FLOAT4(gV(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
     }
