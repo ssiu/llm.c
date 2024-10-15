@@ -3114,7 +3114,409 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
     }
 }
 
+#undef sQ
+#undef sK
+#undef sK_T
 
+
+
+// #define Q_TILE_SIZE 64
+// #define KV_TILE_SIZE 128
+// #define HEAD_SIZE 64
+
+#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
+#define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
+#define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
+//
+// #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
+// #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
+//
+// #define sdS(i,j) sdS[(i) * KV_TILE_SIZE + (j)]
+// #define sdS_T(i,j) sdS[(i) + (j) * KV_TILE_SIZE]
+
+__global__ __launch_bounds__(256)
+void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
+                                int B, int T, int NH, int HS) {
+    // inp  (B, T, 3, NH, HS)
+    // out  (B, T, NH, HS)
+    // dout (B, T, NH, HS)
+    // l    (B, T, NH)
+    // d    (B, T, NH)
+
+    // dinp (B, T, 3, NH, HS)
+
+    // blockDim.x = NH
+    // blockDim.y = T
+    // blockDim.z = B
+
+    // K in shared memory, V in register
+
+    int thread_id = threadIdx.x;
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+
+
+    int q_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset_start = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // offset for the q,k,v of the corresponding head
+    int q_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset_current = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // following flashattention 2, we only store (log (L) + m) instead of L, m
+    int ld_global_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
+    int ld_global_offset_current = blockIdx.z * T * NH + blockIdx.y * 2 * Q_TILE_SIZE * NH + blockIdx.x;
+
+    int q_increment = Q_TILE_SIZE * 3 * NH * HS;
+    int o_increment = Q_TILE_SIZE * NH * HS;
+    int ld_increment = Q_TILE_SIZE * NH;
+
+    float* gQ = &inp[q_global_offset_current];
+    float* gK = &inp[k_global_offset_current];
+    float* gV = &inp[v_global_offset_current];
+    float* gdO = &dout[o_global_offset_current];
+    float* gL = &l[ld_global_offset_current];
+    float* gD = &d[ld_global_offset_current];
+
+
+    // output
+    float* gdQ = &dinp[q_global_offset_current];
+    float* gdK = &dinp[k_global_offset_current];
+    float* gdV = &dinp[v_global_offset_current];
+
+    extern __shared__ float sharedMemory[];
+
+    float* sQ = &sharedMemory[0];
+    float* sdO = sQ + Q_TILE_SIZE * Q_TILE_SIZE;
+    float* sK = sdO + Q_TILE_SIZE * Q_TILE_SIZE;
+    float* sdS = sQ;
+    float* sdQ = sQ;
+
+    // offset for register tiling for dK, dV
+    int thread_row_128_x_64 = warp_id * 16 + (lane_id / 16) * 4;
+    int thread_col_128_x_64 = (lane_id % 16) * 4;
+
+    int thread_row_64_x_128 = thread_col_128_x_64;
+    int thread_col_64_x_128 = thread_row_128_x_64;
+
+    int thread_row_64_x_64 = warp_id * 8 + (lane_id / 16) * 4;
+    int thread_col_64_x_64 = (lane_id % 16) * 4;
+
+
+    // offset for atomic add for dQ
+    int thread_row_atomic_add = warp_id * 8;
+    int thread_col_atomic_add = lane_id;
+
+    unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
+
+    float rL[4];
+    float rD[4];
+//
+    float rQ[4];
+    float rK[8];
+    float rV[8];
+    float rdO[4];
+    float rP[8];
+    float rdS[8];
+//
+//     float tQ[4][4];
+//     float tdO[4][4];
+//
+    float tV[8][4];
+    float tdQ[4][4] = {0.0f};
+    float tdK[8][4] = {0.0f};
+    float tdV[8][4] = {0.0f};
+//
+    float tS[4][8] = {0.0f};
+    float (&tP)[4][8] = tS;
+    float tdP[4][8] = {0.0f};
+    float (&tdS)[4][8] = tdP;
+    // first load K into shared memory and V into registers
+    // everything is TILE_SIZE * HEAD_SIZE in row major
+
+    for (int i=0; i < 4;i ++){
+        FLOAT4(sK(thread_row_128_x_64 + i, thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + i, thread_col_128_x_64));
+        FLOAT4(sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
+        FLOAT4(tV[i][0]) = FLOAT4(gV(thread_row_128_x_64 + i, thread_col_128_x_64));
+        FLOAT4(tV[i+4][0]) = FLOAT4(gV(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
+    }
+
+    //__syncthreads();
+
+    for (int q_tile = 2 * blockIdx.y; q_tile < T / Q_TILE_SIZE; q_tile++) {
+
+        // load Q, dO into shared memory
+        for (int i=0; i < 4;i ++){
+            FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
+            FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
+        }
+        __syncthreads();
+
+
+        // load l, d into registers
+        // wrong row, i think it should be thread_row_64_x_128?
+        // original was thread_row_64_x_64
+        // check rD, might still be wrong
+        for (int i=0; i< 4;i ++){
+            rL[i] = gL(thread_row_64_x_128 + i);
+            rD[i] = gD(thread_row_64_x_128 + i);
+        }
+
+        //__syncthreads();
+
+
+        //
+        // compute S and P
+        //
+
+        // reset tS back to zero
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 8; j++) {
+                tS[i][j] = 0;
+            }
+        }
+
+        // compute S = Q * K^T
+        for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
+            for (int i = 0; i < 4; i++) {
+                rQ[i] = sQ(thread_row_64_x_128 + i, k_fragment);
+                rK[i] = sK_T(k_fragment, thread_col_64_x_128 + i);
+                rK[i+4] = sK_T(k_fragment, thread_col_64_x_128 + 8 + i);
+            }
+
+            //tS is 4 x 8
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (q_tile * Q_TILE_SIZE + thread_row_64_x_128 + i < blockIdx.y * KV_TILE_SIZE + thread_col_64_x_128 + j) {
+                        tS[i][j] = -FLT_MAX;
+                    } else {
+                        tS[i][j] += rQ[i] * rK[j];
+                    }
+
+                    if (q_tile * Q_TILE_SIZE + thread_row_64_x_128 + i < blockIdx.y * KV_TILE_SIZE + thread_col_64_x_128 + 8 + j) {
+                        tS[i][j + 4] = -FLT_MAX;
+                    } else {
+                        tS[i][j + 4] += rQ[i] * rK[j + 4];
+                    }
+                }
+            }
+        }
+
+
+
+        //rescale S by 1/sqrt(HS)
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (tS[i][j] != -FLT_MAX) {
+                    tS[i][j] *= 1.0f / sqrtf(HS);
+                }
+            }
+        }
+
+        // compute P = exp(Q * K^T - l)
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 8; j++) {
+               tP[i][j] = expf(tS[i][j] - rL[i]);
+            }
+        }
+
+
+
+        //
+        // compute dP and dS
+        //
+
+        // reset tdP back to zero
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 8; j++) {
+                tdP[i][j] = 0;
+            }
+        }
+
+        // compute dP = dO * V^T
+        for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
+            for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
+                // position is k_fragment_outer * 4 + k_fragment_inner
+                int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
+                for (int i = 0; i < 4; i++) {
+                    rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
+                    rV[i] = __shfl_sync(mask, tV[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
+                    rV[i+4] = __shfl_sync(mask, tV[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
+                }
+
+                for (int i = 0; i < 4; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        if (q_tile * Q_TILE_SIZE + thread_row_64_x_128 + i < blockIdx.y * KV_TILE_SIZE + thread_col_64_x_128 + j) {
+                            tdP[i][j] = 0;
+                        } else {
+                            tdP[i][j] += rdO[i] * rV[j];
+                        }
+                    }
+                    for (int j = 0; j < 4; j++) {
+                        if (q_tile * Q_TILE_SIZE + thread_row_64_x_128 + i < blockIdx.y * KV_TILE_SIZE + thread_col_64_x_128 + 8 + j) {
+                            tdP[i][j+4] = 0;
+                        } else {
+                            tdP[i][j+4] += rdO[i] * rV[j+4];
+                        }
+                    }
+
+                }
+
+
+
+            }
+        }
+
+
+        // compute dS = P \circ (dP - D)
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 8; j++) {
+                tdS[i][j] = tP[i][j] * (tdP[i][j] - rD[i]);
+            }
+        }
+
+
+
+        //
+        //  compute dV
+        //
+
+        // compute dV = P^T * dO
+        for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
+            for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
+                // position is k_fragment_outer * 4 + k_fragment_inner
+                int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
+                for (int i = 0; i < 4; i++) {
+                    rP[i] = __shfl_sync(mask, tP[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
+                    rP[i+4] = __shfl_sync(mask, tP[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
+                    rdO[i] = sdO(k_fragment, thread_col_128_x_64 + i);
+                }
+
+
+                for (int i = 0; i < 8; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        tdV[i][j] += rP[i] * rdO[j];
+                    }
+                }
+            }
+        }
+
+
+        //
+        // dK
+        //
+
+        // compute dK = dS^T * Q
+        for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
+            for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
+                // position is k_fragment_outer * 4 + k_fragment_inner
+                int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
+                for (int i = 0; i < 4; i++) {
+                    rdS[i] = __shfl_sync(mask, tdS[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
+                    rdS[i+4] = __shfl_sync(mask, tdS[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
+                    rQ[i] = sQ(k_fragment, thread_col_128_x_64 + i);
+                }
+
+                for (int i = 0; i < 8; i++) {
+                    for (int j = 0; j < 4; j++) {
+                        tdK[i][j] += rdS[i] * rQ[j];
+                    }
+                }
+            }
+        }
+
+        __syncthreads();
+
+        //
+        // compute dQ
+        //
+
+        // reset tdQ back to zero
+        for (int i=0;i<4;i++) {
+            for (int j=0; j<4; j++) {
+                tdQ[i][j] = 0;
+            }
+        }
+
+        // store dS to shared memory
+        for (int i = 0; i< 4; i++) {
+            for (int j=0; j < 4;j++) {
+                sdS(thread_row_64_x_128 + i, thread_col_64_x_128 + j) = tdS[i][j];
+                sdS(thread_row_64_x_128 + i, thread_col_64_x_128 + j + 8) = tdS[i][j + 4];
+            }
+        }
+
+        __syncthreads();
+
+        for (int k_fragment = 0; k_fragment < KV_TILE_SIZE; k_fragment++) {
+
+            for (int i=0;i<4;i++) {
+                rdS[i] = sdS(thread_row_64_x_64 + i, k_fragment);
+                rK[i] = sK(k_fragment, thread_col_64_x_64 + i);
+            }
+
+            for (int i=0;i<4;i++) {
+                for (int j=0; j<4; j++) {
+                    tdQ[i][j] += rdS[i] * rK[j];
+                }
+            }
+        }
+
+        for (int i=0;i<4;i++) {
+            for (int j=0; j<4; j++) {
+                tdQ[i][j] *= 1.0f / sqrtf(HS);
+            }
+        }
+
+        __syncthreads();
+
+        // store dQ
+        for (int i=0;i<4;i++) {
+            for (int j=0; j<4; j++) {
+                sdQ(thread_row_64_x_64 + i, thread_col_64_x_64 + j) = tdQ[i][j];
+            }
+        }
+        __syncthreads();
+
+        for (int i=0;i<8;i++) {
+            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add ), sdQ(thread_row_atomic_add + i, thread_col_atomic_add));
+            atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32), sdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32));
+        }
+
+        gQ += q_increment;
+        gdQ += q_increment;
+        gdO += o_increment;
+        gL += ld_increment;
+        gD += ld_increment;
+        __syncthreads();
+    }
+
+    // rescale dK
+    for (int i=0;i<8;i++) {
+        for (int j=0; j<4; j++) {
+            tdK[i][j] *= 1.0f / sqrtf(HS);
+        }
+    }
+
+
+    // store dK to global memory
+
+    for (int i=0;i<4;i++) {
+        FLOAT4(gdK(thread_row_128_x_64 + i ,thread_col_128_x_64)) = FLOAT4(tdK[i][0]);
+        FLOAT4(gdK(thread_row_128_x_64 + 8 + i ,thread_col_128_x_64)) = FLOAT4(tdK[i+4][0]);
+    }
+
+
+    // store dV to global memory
+    for (int i=0;i<4;i++) {
+        FLOAT4(gdV(thread_row_128_x_64 + i ,thread_col_128_x_64)) = FLOAT4(tdV[i][0]);
+        FLOAT4(gdV(thread_row_128_x_64 + 8 + i ,thread_col_128_x_64)) = FLOAT4(tdV[i+4][0]);
+    }
+}
 
 
 
@@ -3725,13 +4127,19 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 //     cudaFuncSetAttribute(flash_attention_backward_kernel2, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes2);
 //     flash_attention_backward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
+//
+//     dim3 dimGrid3(NH, T / 128, B);
+//     dim3 dimBlock3(256);
+//     int maxbytes3 = 65536;
+//     cudaFuncSetAttribute(flash_attention_backward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
+//     flash_attention_backward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
-    dim3 dimGrid3(NH, T / 128, B);
-    dim3 dimBlock3(256);
-    int maxbytes3 = 65536;
-    cudaFuncSetAttribute(flash_attention_backward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
-    flash_attention_backward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
+    dim3 dimGrid4(NH, T / 128, B);
+    dim3 dimBlock4(256);
+    int maxbytes4 = 65536;
+    cudaFuncSetAttribute(flash_attention_backward_kernel4, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes4);
+    flash_attention_backward_kernel4<<<dimGrid3, dimBlock3, maxbytes4>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
@@ -3998,14 +4406,14 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-    int B = 4;
-    int T = 4096;
-    int C = 768;
-    int NH = 12;
-//    int B = 1;
-//    int T = 128;
-//    int C = 64;
-//    int NH = 1;
+//     int B = 4;
+//     int T = 1024;
+//     int C = 768;
+//     int NH = 12;
+   int B = 1;
+   int T = 128;
+   int C = 64;
+   int NH = 1;
 
     // read kernel_num from command line
     int kernel_num = 1;
