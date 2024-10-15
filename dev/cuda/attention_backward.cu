@@ -3299,10 +3299,11 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
             for (int i = 0; i < 4; i++) {
                 rQ[i] = sQ(thread_row_64_x_128 + i, k_fragment);
-                rK[i] = sK_T(k_fragment, thread_col_64_x_128 + i);
-                rK[i+4] = sK_T(k_fragment, thread_col_64_x_128 + 8 + i);
+//                 rK[i] = sK_T(k_fragment, thread_col_64_x_128 + i);
+//                 rK[i+4] = sK_T(k_fragment, thread_col_64_x_128 + 8 + i);
             }
-
+            FLOAT4(rK[0]) = FLOAT4(sK_T(k_fragment, thread_col_64_x_128 ));
+            FLOAT4(rK[4]) = FLOAT4(sK_T(k_fragment, thread_col_64_x_128 + 8));
             //tS is 4 x 8
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
