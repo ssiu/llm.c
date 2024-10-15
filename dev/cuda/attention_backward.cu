@@ -3230,6 +3230,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     float tdQ[4][4] = {0.0f};
     float tdK[8][4] = {0.0f};
     float tdV[8][4] = {0.0f};
+    float gKrK[8][4];
 //
     float tS[4][8] = {0.0f};
     float (&tP)[4][8] = tS;
@@ -3239,15 +3240,25 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     // everything is TILE_SIZE * HEAD_SIZE in row major
 
     for (int i=0; i < 4;i ++){
-        for (int j=0;j<4;j++) {
-            sK(thread_row_128_x_64 + i, thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + i, thread_col_128_x_64 + j);
-            sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64 + j);
-        }
+//         for (int j=0;j<4;j++) {
+//             sK(thread_row_128_x_64 + i, thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + i, thread_col_128_x_64 + j);
+//             sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64 + j);
+//         }
+        FLOAT4(gKrK[i][0]) = FLOAT4(gK(thread_row_128_x_64 + i, thread_col_128_x_64));
+        FLOAT4(gKrK[i+4][0]) = FLOAT4(gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
 //         FLOAT4(sK(thread_row_128_x_64 + i, thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + i, thread_col_128_x_64));
 //         FLOAT4(sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
         FLOAT4(tV[i][0]) = FLOAT4(gV(thread_row_128_x_64 + i, thread_col_128_x_64));
         FLOAT4(tV[i+4][0]) = FLOAT4(gV(thread_row_128_x_64 + 8 + i, thread_col_128_x_64));
     }
+
+    for (int i=0; i < 4;i ++){
+        for (int j=0;j< 4;j++) {
+            sK(thread_row_128_x_64 + i, thread_col_128_x_64 + j) = gKrK[i][j];
+            sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64 + j) = gKrK[i+4][j];
+        }
+    }
+
 
     //__syncthreads();
 
