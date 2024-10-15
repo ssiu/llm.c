@@ -3239,7 +3239,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     // everything is TILE_SIZE * HEAD_SIZE in row major
 
     for (int i=0; i < 4;i ++){
-        for (j=0;j<4;j++) {
+        for (int j=0;j<4;j++) {
             sK(thread_row_128_x_64 + i, thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + i, thread_col_128_x_64 + j);
             sK(thread_row_128_x_64 + 8 + i,  thread_col_128_x_64 + j) = gK(thread_row_128_x_64 + 8 + i, thread_col_128_x_64 + j);
         }
