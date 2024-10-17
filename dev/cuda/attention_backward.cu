@@ -2997,7 +2997,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 // #define sK(i,j) sK[(i) + (j) * KV_TILE_SIZE]
 // #define sK_T(i,j) sK[(i) * KV_TILE_SIZE + (j)]
 #define sK_row(i,j) sK[(i) * HEAD_SIZE + (j) ]
-#define sK_T_row(i,j) sK[(i) * KV_TILE_SIZE + (j)]
+#define sK_T_row(i,j) sK_T[(i) * KV_TILE_SIZE + (j)]
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sQ_col(i,j) sQ[(i) + (j) * Q_TILE_SIZE]
 //
