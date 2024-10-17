@@ -2996,6 +2996,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 // #define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
 // #define sK(i,j) sK[(i) + (j) * KV_TILE_SIZE]
 // #define sK_T(i,j) sK[(i) * KV_TILE_SIZE + (j)]
+#define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
+#define sQ_col(i,j) sQ[(i) + (j) * Q_TILE_SIZE]
 //
 // #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
 // #define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
@@ -3103,6 +3105,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
 //     float tdO[4][4];
 //
     float tV[8][4];
+    float tQ[4][4];
     float tdQ[4][4] = {0.0f};
     float tdK[8][4] = {0.0f};
     float tdV[8][4] = {0.0f};
@@ -3124,9 +3127,17 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     for (int q_tile = 2 * blockIdx.y; q_tile < T / Q_TILE_SIZE; q_tile++) {
 
         // load Q, dO into shared memory
+
         for (int i=0; i < 4;i ++){
-            FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
+            //FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
+            FLOAT4(tQ[i][0]) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
+        }
+
+        for (int i=0;i<4;i++) {
+            for (int j=0;j<4;j++) {
+                sQ_col(thread_row_64_x_64 + i, thread_col_64_x_64+j) = tQ[i][j];
+            }
         }
 
 
@@ -3153,7 +3164,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
         // compute S = Q * K^T
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
             for (int i = 0; i < 4; i++) {
-                rQ[i] = sQ(thread_row_64_x_128 + i, k_fragment);
+                rQ[i] = sQ_col(thread_row_64_x_128 + i, k_fragment);
                 rK[i] = sK_T(k_fragment, thread_col_64_x_128 + i);
                 rK[i+4] = sK_T(k_fragment, thread_col_64_x_128 + 8 + i);
             }
@@ -3243,6 +3254,19 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
             }
         }
 
+        // retile Q and dO
+        for (int i=0;i<4;i++) {
+            for (int j=0;j<4;j++) {
+                tQ[i][j] = sQ_col(thread_row_64_x_64 + i, thread_col_64_x_64+j);
+            }
+        }
+        __syncthreads();
+        for (int i=0;i<4;i++) {
+            for (int j=0;j<4;j++) {
+                sQ_row(thread_row_64_x_64 + i, thread_col_64_x_64+j) = tQ[i][j];
+            }
+        }
+        __syncthreads();
 
         //
         //  compute dV
@@ -3279,7 +3303,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
                 for (int i = 0; i < 4; i++) {
                     rdS[i] = __shfl_sync(mask, tdS[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
                     rdS[i+4] = __shfl_sync(mask, tdS[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
-                    rQ[i] = sQ(k_fragment, thread_col_128_x_64 + i);
+                    rQ[i] = sQ_row(k_fragment, thread_col_128_x_64 + i);
                 }
 
                 for (int i = 0; i < 8; i++) {
@@ -3314,6 +3338,8 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
 
         __syncthreads();
 
+
+        //compute dQ = dS * K
         for (int k_fragment = 0; k_fragment < KV_TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
