@@ -3007,6 +3007,9 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 #define sdS(i,j) sdS[(i) + (j) * Q_TILE_SIZE]
 #define sdS_T(i,j) sdS[(i) * Q_TILE_SIZE + (j)]
 
+
+// todo
+// rdS should be in column major
 __global__ __launch_bounds__(256)
 void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int NH, int HS) {
@@ -3314,8 +3317,10 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
         for (int k_fragment = 0; k_fragment < KV_TILE_SIZE; k_fragment++) {
 
             for (int i=0;i<4;i++) {
-                rdS[i] = sdS(thread_row_64_x_64 + i, k_fragment);
-                rK[i] = sK(k_fragment, thread_col_64_x_64 + i);
+                //rdS[i] = sdS(thread_row_64_x_64 + i, k_fragment);
+                //rK[i] = sK(k_fragment, thread_col_64_x_64 + i);
+                FLOAT4(rdS[0]) = FLOAT4(sdS(thread_row_64_x_64, k_fragment));
+                FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col_64_x_64));
             }
 
             for (int i=0;i<4;i++) {
