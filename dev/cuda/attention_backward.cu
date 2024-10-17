@@ -3002,6 +3002,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 // #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
 // #define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
 // #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
+#define sdO_row(i,j) sdO[(i) * HEAD_SIZE + (j)]
+#define sdO_col(i,j) sdO[(i) + (j) * Q_TILE_SIZE]
 // #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 //
 // #define sdS(i,j) sdS[(i) * KV_TILE_SIZE + (j)]
@@ -3106,6 +3108,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
 //
     float tV[8][4];
     float tQ[4][4];
+    float tdO[4][4];
     float tdQ[4][4] = {0.0f};
     float tdK[8][4] = {0.0f};
     float tdV[8][4] = {0.0f};
@@ -3130,13 +3133,15 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
 
         for (int i=0; i < 4;i ++){
             //FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
+            //FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(tQ[i][0]) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
-            FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
+            FLOAT4(tdO[i][0]) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
 
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++) {
                 sQ_col(thread_row_64_x_64 + i, thread_col_64_x_64+j) = tQ[i][j];
+                sdO_col(thread_row_64_x_64 + i, thread_col_64_x_64+j) = tdO[i][j];
             }
         }
 
@@ -3221,8 +3226,9 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
             for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
                 // position is k_fragment_outer * 4 + k_fragment_inner
                 int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
+                FLOAT4(rdO[0]) = FLOAT4(sdO_col(thread_row_64_x_128, k_fragment));
                 for (int i = 0; i < 4; i++) {
-                    rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
+                    //rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
                     rV[i] = __shfl_sync(mask, tV[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                     rV[i+4] = __shfl_sync(mask, tV[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                 }
@@ -3255,15 +3261,19 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
             }
         }
 
+        //
         // retile Q and dO
+        //
         for (int i=0;i<4;i++) {
             for (int j=0;j<4;j++) {
                 tQ[i][j] = sQ_col(thread_row_64_x_64 + i, thread_col_64_x_64+j);
+                tdO[i][j] = sdO_col(thread_row_64_x_64 + i, thread_col_64_x_64+j);
             }
         }
         __syncthreads();
         for (int i=0;i<4;i++) {
             FLOAT4(sQ_row(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(tQ[i][0]);
+            FLOAT4(sdO_row(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(tdO[i][0]);
 //             for (int j=0;j<4;j++) {
 //                 sQ_row(thread_row_64_x_64 + i, thread_col_64_x_64 + j) = tQ[i][j];
 //             }
@@ -3282,9 +3292,9 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
                 for (int i = 0; i < 4; i++) {
                     rP[i] = __shfl_sync(mask, tP[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
                     rP[i+4] = __shfl_sync(mask, tP[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
-                    rdO[i] = sdO(k_fragment, thread_col_128_x_64 + i);
+                    //rdO[i] = sdO(k_fragment, thread_col_128_x_64 + i);
                 }
-
+                FLOAT4(rdO[0]) = FLOAT4(sdO_row(k_fragment, thread_col_128_x_64 ));
                 for (int i = 0; i < 8; i++) {
                     for (int j = 0; j < 4; j++) {
                         tdV[i][j] += rP[i] * rdO[j];
