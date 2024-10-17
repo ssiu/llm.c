@@ -3163,8 +3163,9 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
 
         // compute S = Q * K^T
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
+            FLOAT4(rQ[0]) = FLOAT4(sQ_col(thread_row_64_x_128, k_fragment));
             for (int i = 0; i < 4; i++) {
-                rQ[i] = sQ_col(thread_row_64_x_128 + i, k_fragment);
+                //rQ[i] = sQ_col(thread_row_64_x_128 + i, k_fragment);
                 rK[i] = sK_T(k_fragment, thread_col_64_x_128 + i);
                 rK[i+4] = sK_T(k_fragment, thread_col_64_x_128 + 8 + i);
             }
@@ -3262,9 +3263,10 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
         }
         __syncthreads();
         for (int i=0;i<4;i++) {
-            for (int j=0;j<4;j++) {
-                sQ_row(thread_row_64_x_64 + i, thread_col_64_x_64+j) = tQ[i][j];
-            }
+            FLOAT4(sQ_row(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(tQ[i][0]);
+//             for (int j=0;j<4;j++) {
+//                 sQ_row(thread_row_64_x_64 + i, thread_col_64_x_64 + j) = tQ[i][j];
+//             }
         }
         __syncthreads();
 
@@ -3303,8 +3305,9 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
                 for (int i = 0; i < 4; i++) {
                     rdS[i] = __shfl_sync(mask, tdS[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
                     rdS[i+4] = __shfl_sync(mask, tdS[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
-                    rQ[i] = sQ_row(k_fragment, thread_col_128_x_64 + i);
+//                     rQ[i] = sQ_row(k_fragment, thread_col_128_x_64 + i);
                 }
+                FLOAT4(rQ[0]) = FLOAT4(sQ_row(k_fragment, thread_col_128_x_64 ));
 
                 for (int i = 0; i < 8; i++) {
                     for (int j = 0; j < 4; j++) {
