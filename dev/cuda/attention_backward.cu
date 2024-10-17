@@ -2997,7 +2997,7 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 // #define sK(i,j) sK[(i) + (j) * KV_TILE_SIZE]
 // #define sK_T(i,j) sK[(i) * KV_TILE_SIZE + (j)]
 #define sK_row(i,j) sK[(i) * HEAD_SIZE + (j) ]
-#define sK_T_row(i,j) sK[(i) + (j) * KV_TILE_SIZE]
+#define sK_T_row(i,j) sK[(i) * KV_TILE_SIZE + (j)]
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sQ_col(i,j) sQ[(i) + (j) * Q_TILE_SIZE]
 //
@@ -3075,6 +3075,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     float* sQ = &sharedMemory[0];
     float* sdO = sQ + Q_TILE_SIZE * Q_TILE_SIZE;
     float* sK = sdO + Q_TILE_SIZE * Q_TILE_SIZE;
+    float* sK_T = sK;
     float* sdS = sQ;
     float* sdQ = sQ;
 
@@ -4335,14 +4336,14 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-    int B = 4;
-    int T = 1024;
-    int C = 768;
-    int NH = 12;
-//    int B = 1;
-//    int T = 128;
-//    int C = 64;
-//    int NH = 1;
+//     int B = 4;
+//     int T = 1024;
+//     int C = 768;
+//     int NH = 12;
+   int B = 1;
+   int T = 128;
+   int C = 64;
+   int NH = 1;
 
     // read kernel_num from command line
     int kernel_num = 1;
