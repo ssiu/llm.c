@@ -3415,13 +3415,14 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
             atomicAdd(&gdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32), sdQ(thread_row_atomic_add + i, thread_col_atomic_add + 32));
         }
 
-
+        // store sK back to registers
         for (int i=0;i<4;i++) {
-
-            for (int j=0;j<4;j++) {
-                tK[i][j] = sK_row(thread_row_128_x_64 + i, thread_col_64_x_64 + j);
-                tK[i+4][j] = sK_row(thread_row_128_x_64 + 8 + i, thread_col_64_x_64 + j);
-            }
+            FLOAT4(tK[i][0]) = FLOAT4(sK_row(thread_row_128_x_64 + i, thread_col_64_x_64));
+            FLOAT4(tK[i+4][0]) = FLOAT4(sK_row(thread_row_128_x_64 + 8 + i, thread_col_64_x_64));
+//             for (int j=0;j<4;j++) {
+//                 tK[i][j] = sK_row(thread_row_128_x_64 + i, thread_col_64_x_64 + j);
+//                 tK[i+4][j] = sK_row(thread_row_128_x_64 + 8 + i, thread_col_64_x_64 + j);
+//             }
         }
         gQ += q_increment;
         gdQ += q_increment;
