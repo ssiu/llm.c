@@ -3128,6 +3128,8 @@ void flash_attention_backward_kernel3(float* dinp, float* inp, float* dout, floa
 // #define sK(i,j) sK[(i) + (j) * KV_TILE_SIZE]
 // #define sK_T(i,j) sK[(i) * KV_TILE_SIZE + (j)]
 //
+#define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
+#define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
 // #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
 // #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 //
@@ -3323,7 +3325,7 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
                 // position is k_fragment_outer * 4 + k_fragment_inner
                 int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
                 for (int i = 0; i < 4; i++) {
-                    rdQ[i] = sdQ(thread_row_64_x_128 + i, k_fragment);
+                    rQ[i] = sdQ(thread_row_64_x_128 + i, k_fragment);
                     rK[i] = __shfl_sync(mask, tK[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                     rK[i+4] = __shfl_sync(mask, tK[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                 }
@@ -3333,14 +3335,14 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
                         if (q_tile * Q_TILE_SIZE + thread_row_64_x_128 + i < blockIdx.y * KV_TILE_SIZE + thread_col_64_x_128 + j) {
                             tS[i][j] = -FLT_MAX;
                         } else {
-                            tS[i][j] += rdQ[i] * rK[j];
+                            tS[i][j] += rQ[i] * rK[j];
                         }
                     }
                     for (int j = 0; j < 4; j++) {
                         if (q_tile * Q_TILE_SIZE + thread_row_64_x_128 + i < blockIdx.y * KV_TILE_SIZE + thread_col_64_x_128 + 8 + j) {
                             tdP[i][j+4] = -FLT_MAX;
                         } else {
-                            tS[i][j+4] += rdQ[i] * rK[j+4];
+                            tS[i][j+4] += rQ[i] * rK[j+4];
                         }
                     }
 
