@@ -1114,19 +1114,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             FLOAT4(rQ[4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment));
             FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
             FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
-            if (threadIdx.x == 0 && tile==0) {
-                printf("kernel 3, k_fragment = %d\n", k_fragment);
-                printf("rQ: ");
-                for (int i = 0;i<8;i++) {
-                    printf("%f ", rQ[i]);
-                }
-                printf("\n");
-                printf("rK: ");
-                for (int i = 0;i<8;i++) {
-                    printf("%f ", rK[i]);
-                }
-                printf("\n");
-            }
+
 
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
@@ -1444,42 +1432,6 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
             }
         }
 
-//         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
-//
-//             FLOAT4(rQ[0]) = FLOAT4(sQ(warp_row + thread_row, k_fragment));
-//             FLOAT4(rQ[4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment));
-//             FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
-//             FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
-//
-//
-//             for (int i = 0; i < 4; i++) {
-//                 for (int j = 0; j < 4; j++) {
-//                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
-//                         tS[i][j] = -FLT_MAX;
-//                     } else {
-//                         tS[i][j] += rQ[i] * rK[j];
-//                     }
-//
-//                     if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j) {
-//                         tS[i + 4][j] = -FLT_MAX;
-//                     } else {
-//                         tS[i + 4][j] += rQ[i + 4] * rK[j];
-//                     }
-//
-//                     if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j + 64) {
-//                         tS[i][j+4] = -FLT_MAX;
-//                     } else {
-//                         tS[i][j+4] += rQ[i] * rK[j+4];
-//                     }
-//
-//                     if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j + 64) {
-//                         tS[i+4][j+4] = -FLT_MAX;
-//                     } else {
-//                         tS[i+4][j+4] += rQ[i+4] * rK[j+4];
-//                     }
-//                 }
-//             }
-//         }
 
         for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
             for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
@@ -1491,19 +1443,6 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
                     //rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
                     rQ[i] = __shfl_sync(mask, tQ[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                     rQ[i+4] = __shfl_sync(mask, tQ[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
-                }
-                if (threadIdx.x == 0 && tile==0) {
-                    printf("kernel 4, k_fragment = %d\n", k_fragment);
-                    printf("rQ: ");
-                    for (int i = 0;i<8;i++) {
-                        printf("%f ", rQ[i]);
-                    }
-                    printf("\n");
-                    printf("rK: ");
-                    for (int i = 0;i<8;i++) {
-                        printf("%f ", rK[i]);
-                    }
-                    printf("\n");
                 }
 
                 for (int i = 0; i < 4; i++) {
@@ -4429,13 +4368,13 @@ void flash_attention_forward(float* out, float* inp, float* l,
 //     flash_attention_forward_kernel2<<<dimGrid2, dimBlock2, maxbytes2>>>(out, inp, l, B, T, NH, HS);
 
 
-    dim3 dimGrid3(NH, T / 128, B);
-    dim3 dimBlock3(256);
-    int maxbytes3 = 98304;
-    cudaFuncSetAttribute(flash_attention_forward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
-    flash_attention_forward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(out, inp, l, B, T, NH, HS);
-
-    cudaCheck(cudaGetLastError());
+//     dim3 dimGrid3(NH, T / 128, B);
+//     dim3 dimBlock3(256);
+//     int maxbytes3 = 98304;
+//     cudaFuncSetAttribute(flash_attention_forward_kernel3, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes3);
+//     flash_attention_forward_kernel3<<<dimGrid3, dimBlock3, maxbytes3>>>(out, inp, l, B, T, NH, HS);
+//
+//     cudaCheck(cudaGetLastError());
 
 
 
@@ -4760,14 +4699,14 @@ int main(int argc, char **argv) {
     setup_main();
 
     // hyperparameters
-//     int B = 4;
-//     int T = 1024;
-//     int C = 768;
-//     int NH = 12;
-   int B = 1;
-   int T = 128;
-   int C = 64;
-   int NH = 1;
+    int B = 4;
+    int T = 1024;
+    int C = 768;
+    int NH = 12;
+//    int B = 1;
+//    int T = 128;
+//    int C = 64;
+//    int NH = 1;
 
     // read kernel_num from command line
     int kernel_num = 1;
