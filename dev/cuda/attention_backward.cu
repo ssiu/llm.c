@@ -1363,12 +1363,7 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     int thread_col = (lane_id % 16) * 4;
 
 
-    // load gQ to sQ
 
-    for (int i = 0; i < 4; i++) {
-        FLOAT4(tQ[i][0]) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
-        FLOAT4(tQ[i+4][0]) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
-    }
 
     // main loop
     float tQ[8][4];
@@ -1388,6 +1383,16 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     // this stores sum(rP) across the half-warps
     // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
     float rD[8] = {0.0f};
+
+
+    // load gQ to sQ
+
+    for (int i = 0; i < 4; i++) {
+        FLOAT4(tQ[i][0]) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
+        FLOAT4(tQ[i+4][0]) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+    }
+
+
     // For auto regressive mask, need to check when kv_tile = blockIdx.y
     for (int tile = 0; tile <= blockIdx.y; tile++) {
 
