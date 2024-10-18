@@ -1115,7 +1115,7 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
             FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
             if (threadIdx.x == 0 && tile==0) {
-                printf("kernel 3, k_fragment = %d", k_fragment);
+                printf("kernel 3, k_fragment = %d\n", k_fragment);
                 printf("rQ: ");
                 for (int i = 0;i<8;i++) {
                     printf("%f ", rQ[i]);
@@ -1491,6 +1491,19 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
                     //rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
                     rQ[i] = __shfl_sync(mask, tQ[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                     rQ[i+4] = __shfl_sync(mask, tQ[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
+                }
+                if (threadIdx.x == 0 && tile==0) {
+                    printf("kernel 4, k_fragment = %d\n", k_fragment);
+                    printf("rQ: ");
+                    for (int i = 0;i<8;i++) {
+                        printf("%f ", rQ[i]);
+                    }
+                    printf("\n");
+                    printf("rK: ");
+                    for (int i = 0;i<8;i++) {
+                        printf("%f ", rK[i]);
+                    }
+                    printf("\n");
                 }
 
                 for (int i = 0; i < 4; i++) {
