@@ -1687,11 +1687,11 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     }
 
 }
-#undefine TILE_SIZE
-#undefine HEAD_SIZE
-#undefine sQ
-#undefine sK_T
-#undefine sV
+#undef TILE_SIZE
+#undef HEAD_SIZE
+#undef sQ
+#undef sK_T
+#undef sV
 
 
 __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
