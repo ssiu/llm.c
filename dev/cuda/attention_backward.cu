@@ -1114,7 +1114,19 @@ void flash_attention_forward_kernel3(float* out, float* inp, float* l,
             FLOAT4(rQ[4]) = FLOAT4(sQ(warp_row + thread_row + 8, k_fragment));
             FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
             FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
-
+            if (threadIdx.x == 0 && tile==0) {
+                printf("kernel 3, k_fragment = %d", k_fragment);
+                printf("rQ: ");
+                for (int i = 0;i<8;i++) {
+                    printf("%f ", rQ[i]);
+                }
+                printf("\n");
+                printf("rK: ");
+                for (int i = 0;i<8;i++) {
+                    printf("%f ", rK[i]);
+                }
+                printf("\n");
+            }
 
             for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 4; j++) {
