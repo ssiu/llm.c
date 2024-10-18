@@ -1580,10 +1580,11 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
             for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
                 for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
                     // position is h * 64 + l * 4 + k
+                    int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
                     for (int i=0;i<4;i++) {
-                        rP[i] = __shfl_sync(mask, tP[i][k_fragment_inner + step * 4], (lane_id /16) * 16  + ((k_fragment_outer * 4 + k_fragment_inner) / 4));
-                        rP[i + 4] = __shfl_sync(mask, tP[i + 4][k_fragment_inner + step * 4], (lane_id /16) * 16  + ((k_fragment_outer * 4 + k_fragment_inner) / 4));
-                        rV[i] = sV(step * 64 + k_fragment_outer * 4 + k_fragment_inner, thread_col + i);
+                        rP[i] = __shfl_sync(mask, tP[i][k_fragment_inner + step * 4], (lane_id /16) * 16  + k_fragment_outer );
+                        rP[i + 4] = __shfl_sync(mask, tP[i + 4][k_fragment_inner + step * 4], (lane_id /16) * 16  + k_fragment_outer);
+                        rV[i] = sV(step * 64 + k_fragment, thread_col + i);
                     }
 
                     for (int i = 0; i < 8; i++) {
