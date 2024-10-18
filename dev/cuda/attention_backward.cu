@@ -1417,8 +1417,8 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
 
         for (int i = 0; i < 4; i++) {
             for (int j=0; j < 4; j++) {
-                sK_T(thread_col + j, warp_row + thread_row + i) = tK[j][i];
-                sK_T(thread_col + j, warp_row + thread_row + i + 8) = tK[j][i];
+                sK_T(thread_col + j, warp_row + thread_row + i) = tK[i][j];
+                sK_T(thread_col + j, warp_row + thread_row + i + 8) = tK[i+4][j];
             }
         }
 
