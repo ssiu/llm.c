@@ -1383,7 +1383,8 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     // this stores sum(rP) across the half-warps
     // in order to compute rL = exp(rM_old - rM) * rL_old + sum(rP)
     float rD[8] = {0.0f};
-
+    unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
+    int lane_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
 
     // load gQ to sQ
 
@@ -1472,8 +1473,8 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
             for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
                 // position is k_fragment_outer * 4 + k_fragment_inner
                 int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
-                FLOAT4(rK[0]) = FLOAT4(sK(k_fragment, thread_col));
-                FLOAT4(rK[4]) = FLOAT4(sK(k_fragment, thread_col + 64));
+                FLOAT4(rK[0]) = FLOAT4(sK_T(k_fragment, thread_col));
+                FLOAT4(rK[4]) = FLOAT4(sK_T(k_fragment, thread_col + 64));
                 for (int i = 0; i < 4; i++) {
                     //rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
                     rQ[i] = __shfl_sync(mask, tQ[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
@@ -1542,8 +1543,7 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
         //
         // compute m
         //
-        unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
-        int lane_id_to_read_from = (lane_id < 16) ? 0 : 16; // Lane to read from
+
         // compute m
 
 
@@ -1687,6 +1687,12 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     }
 
 }
+#undefine TILE_SIZE
+#undefine HEAD_SIZE
+#undefine sQ
+#undefine sK_T
+#undefine sV
+
 
 __global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
                                 int B, int T, int NH, int HS) {
