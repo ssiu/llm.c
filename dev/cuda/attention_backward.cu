@@ -1432,7 +1432,11 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
             }
         }
 
-
+        // We use warp shuffling to directly load data to each fragment from tQ to compute the outer product tS.
+        // To do this, there is some array indexing involving the modulo operator for tQ to compute the lane id that we want to load data from.
+        // For some reason, in this case the compiler will put tQ into local memory, causing register spillage,
+        // even though the array indexing can be computed at compile time.
+        // To resolve this, we use nested for loops to remove the use of modulo operator.
         for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
             for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
                 // position is k_fragment_outer * 4 + k_fragment_inner
@@ -1488,8 +1492,6 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
         //
         // compute m
         //
-
-        // compute m
 
 
         // inter-thread reduction
@@ -1571,20 +1573,17 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
 
         // add PV to rO
 
-        // We use warp shuffling to directly load data to each fragment from tP to compute the outer product tO.
-        // To do this, there is some array indexing involving the modulo operator for tP to compute the lane id that we want to load data from.
-        // For some reason, in this case the compiler will put tP into local memory, causing register spillage,
-        // even though the array indexing can be computed at compile time.
-        // To resolve this, we use nested for loops to remove the use of modulo operator.
+
         for (int step = 0; step < 2; step++) {
             for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
                 for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
                     // position is h * 64 + l * 4 + k
                     int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
+                    FLOAT4(rV[0]) = FLOAT4(sV(step * 64 + k_fragment, thread_col));
                     for (int i=0;i<4;i++) {
                         rP[i] = __shfl_sync(mask, tP[i][k_fragment_inner + step * 4], (lane_id /16) * 16  + k_fragment_outer );
                         rP[i + 4] = __shfl_sync(mask, tP[i + 4][k_fragment_inner + step * 4], (lane_id /16) * 16  + k_fragment_outer);
-                        rV[i] = sV(step * 64 + k_fragment, thread_col + i);
+                        //rV[i] = sV(step * 64 + k_fragment, thread_col + i);
                     }
 
                     for (int i = 0; i < 8; i++) {
@@ -1595,19 +1594,6 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
                 }
             }
         }
-
-//         for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
-//                     for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
-//                         // position is k_fragment_outer * 4 + k_fragment_inner
-//                         int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
-//                         FLOAT4(rK[0]) = FLOAT4(sK_T(k_fragment, thread_col));
-//                         FLOAT4(rK[4]) = FLOAT4(sK_T(k_fragment, thread_col + 64));
-//                         for (int i = 0; i < 4; i++) {
-//                             //rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
-//                             rQ[i] = __shfl_sync(mask, tQ[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
-//                             rQ[i+4] = __shfl_sync(mask, tQ[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
-//                         }
-
 
 
         // update m and l
