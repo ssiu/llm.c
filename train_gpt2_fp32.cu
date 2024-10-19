@@ -700,11 +700,6 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
 #define FLOAT4(value) reinterpret_cast<float4*>(&(value))[0]
 
-
-
-
-
-
 __global__ __launch_bounds__(256)
 void flash_attention_forward_kernel4(float* out, float* inp, float* l,
                                 int B, int T, int NH, int HS) {
