@@ -1052,6 +1052,26 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
 #undef sK_T
 #undef sV
 
+// preprocessing D = rowsum(dO * O)
+__global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
+                                int B, int T, int NH, int HS) {
+    // both dO and O are (B, T, NH, HS)
+    // d is (B, T, NH)
+    // each thread compute a single token for a single head
+    // so we have B * T * NH
+    // blockDim.x = NH
+    // blockDim.y = T
+    // blockDim.z = B
+    int offset_o = blockIdx.z * T * NH * HS + blockIdx.y * NH * HS + blockIdx.x * HS;
+    int offset_d = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+
+    float reg_d = 0;
+    for (int i =0; i < HS; i++) {
+        reg_d += dout[offset_o + i] * out[offset_o + i];
+    }
+
+    d[offset_d] = reg_d;
+}
 
 
 #define TILE_SIZE 32
