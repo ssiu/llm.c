@@ -687,23 +687,18 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 }
 
 
-
+#define TILE_SIZE 128
+#define HEAD_SIZE 64
 #define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
 #define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
 #define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
 #define gO(i,j) gO[(i) * 1 * NH * HS + (j)]
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
-
-
-#define FLOAT4(value) reinterpret_cast<float4*>(&(value))[0]
-
-
-#define TILE_SIZE 128
-#define HEAD_SIZE 64
 #define sQ(i,j) sQ[(i) + (j) * TILE_SIZE]
 #define sK_T(i,j) sK[(i) * TILE_SIZE + (j)]
 #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
+#define FLOAT4(value) reinterpret_cast<float4*>(&(value))[0]
 
 __global__ __launch_bounds__(256)
 void flash_attention_forward_kernel4(float* out, float* inp, float* l,
@@ -1048,38 +1043,16 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 
 
 #undef TILE_SIZE
-#undef HEAD_SIZE
+
 #undef sQ
 #undef sK_T
 #undef sV
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #define Q_TILE_SIZE 64
 #define KV_TILE_SIZE 128
-#define HEAD_SIZE 64
+
 
 #define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
 #define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
@@ -1099,13 +1072,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 
 #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
-
-#define sdS(i,j) sdS[(i) * KV_TILE_SIZE + (j)]
-#define sdS_T(i,j) sdS[(i) + (j) * KV_TILE_SIZE]
-
-#undef sdS
-#undef sdS_T
-
 
 
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
