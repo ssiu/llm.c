@@ -687,41 +687,16 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 }
 
 
-#define T_r 64
+
 #define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
 #define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
 #define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
 #define gO(i,j) gO[(i) * 1 * NH * HS + (j)]
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
-#define sQ(i,j) sQ[(i) * HS + (j)]
-#define sK(i,j) sK[(i) * HS + (j)]
-#define sV(i,j) sV[(i) * HS + (j)]
-#define sP(i,j) sP[(i) * HS + (j)]
-#define FLOAT4(addr) reinterpret_cast<float4*>(&(addr))[0]
 
 
-#undef sP
-
-
-
-#undef T_r
-#undef sQ
-#undef sK
-#undef sV
-
-#define TILE_SIZE 128
-#define HEAD_SIZE 64
-#define sQ(i,j) sQ[(i) + (j) * TILE_SIZE]
-#define sK(i,j) sK[(i) * TILE_SIZE + (j)]
-#define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
-
-
-#undef TILE_SIZE
-#undef HEAD_SIZE
-#undef sQ
-#undef sK
-#undef sV
+#define FLOAT4(value) reinterpret_cast<float4*>(&(value))[0]
 
 
 #define TILE_SIZE 128
