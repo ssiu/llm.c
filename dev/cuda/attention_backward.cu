@@ -1816,7 +1816,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 }
 
 
-
 #define TILE_SIZE 32
 #define HEAD_SIZE 64
 
@@ -1844,7 +1843,69 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
 #define sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
 #define sdS_T(i,j) sdS[(i) + (j) * TILE_SIZE]
-//#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
+
+
+
+
+__global__ void flash_attention_backward_preprocessing_kernel2(float* d, float* dout, float* out,
+                                int B, int T, int NH, int HS) {
+    // both dO and O are (B, T, NH, HS)
+    // d is (B, T, NH)
+    // blockDim.x = NH
+    // blockDim.y = T
+    // blockDim.z = B
+    // each half warps compute 4 rows of T
+    // each warp computes 8 rows of T
+    // we use 1024 threads = 32 warps per block, so each block computes 256 rows
+    // so we have B * T / 256 * NH blocks
+
+    int o_global_offset = blockIdx.z * T * NH * HS + blockIdx.y * 256 * NH * HS + blockIdx.x * HS;
+    int d_global_offset = blockIdx.z * T * NH + blockIdx.y * 256 * NH + blockIdx.x;
+
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+
+    unsigned mask = (lane_id < 16) ? 0xFFFF : 0xFFFF0000; // Mask for the two halves
+
+    float* gO = &out[o_global_offset];
+    float* gdO = &dout[o_global_offset];
+    float* gD = &d[d_global_offset]
+
+    int thread_row = warp_id * 8 + (lane_id / 16) * 4;
+    int thread_col = (lane_id % 16) * 4;
+
+    float tO[4][4];
+    float tdO[4][4];
+    float sum[4] = {0.0f};
+    // load 4 rows
+    for (int i=0;i<4;i++){
+        FLOAT4(tO[i][0]) = FLOAT4(gO(thread_row + i, thread_col));
+        FLOAT4(tdO[i][0]) = FLOAT4(gdO(thread_row + i, thread_col));
+    }
+
+    // inter-thread reduction
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4;j++) {
+            sum[i] += tO[i][j] * tdO[i][j];
+        }
+    }
+
+    // inter-warp reduction
+    for (int i=0; i < 4; i++) {
+        for (int offset = 8; offset > 0; offset /= 2) {
+           sum[i] += __shfl_down_sync(mask, sum[i], offset);
+        }
+    }
+
+    if (lane_id === 0 || lane_id == 16) {
+        for (i=0;i<4;i++) {
+            gD(thread_row + i ) = sum[i];
+        }
+    }
+}
+
+
+
 
 
 __global__ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
