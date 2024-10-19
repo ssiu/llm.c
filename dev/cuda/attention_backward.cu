@@ -1877,6 +1877,7 @@ __global__ void flash_attention_backward_preprocessing_kernel2(float* d, float* 
     float tO[4][4];
     float tdO[4][4];
     float sum[4] = {0.0f};
+
     // load 4 rows
     for (int i=0;i<4;i++){
         FLOAT4(tO[i][0]) = FLOAT4(gO(thread_row + i, thread_col));
@@ -1898,8 +1899,8 @@ __global__ void flash_attention_backward_preprocessing_kernel2(float* d, float* 
     }
 
     if (lane_id === 0 || lane_id == 16) {
-        for (i=0;i<4;i++) {
-            gD(thread_row + i ) = sum[i];
+        for (int i=0; i<4; i++) {
+            gD(thread_row + i) = sum[i];
         }
     }
 }
