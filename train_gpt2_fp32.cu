@@ -708,21 +708,21 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 __global__ __launch_bounds__(256)
 void flash_attention_forward_kernel4(float* out, float* inp, float* l,
                                 int B, int T, int NH, int HS) {
-// blockDim.x = NH
-// blockDim.y = T
-// blockDim.z = B
-// inp is (B, T, 3, NH, HS)
-// out is (B, T, NH, HS)
-// l is (B, T, NH)
+    // blockDim.x = NH
+    // blockDim.y = T
+    // blockDim.z = B
+    // inp is (B, T, 3, NH, HS)
+    // out is (B, T, NH, HS)
+    // l is (B, T, NH)
 
-// we use 256 threads = 8 warps in each threadblock
-// we use 64KB of shared memory for K, V so each uses 32KB of shared memory
-// Q is stored in registers
-// 32KB of shared memory can store 32*1024/4 = 8192 floats = 128 * 64 floats
-// so each threadblock computes 128 * 64 tile of O, and each warp does 16 * 64 tile of O
-// following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
-// idea: if we dont use shared memory to store
-    //int thread_id = threadIdx.x;
+    // we use 256 threads = 8 warps in each threadblock
+    // we use 64KB of shared memory for K, V so each uses 32KB of shared memory
+    // Q is stored in registers
+    // 32KB of shared memory can store 32*1024/4 = 8192 floats = 128 * 64 floats
+    // so each threadblock computes 128 * 64 tile of O, and each warp does 16 * 64 tile of O
+    // following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
+
+
     int warp_id = threadIdx.x / 32;
     int lane_id = threadIdx.x % 32;
 
@@ -1021,11 +1021,9 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     }
 
 }
-#undef TILE_SIZE
-#undef HEAD_SIZE
-#undef sQ
-#undef sK_T
-#undef sV
+
+
+
 
 // preprocessing D = rowsum(dO * O)
 __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
@@ -1049,132 +1047,78 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 }
 
 
-#define TILE_SIZE 32
-#define HEAD_SIZE 64
-
-#define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
-#define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
-#define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
-
-#define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
-#define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
-#define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
-
-#define gdO(i,j) gdO[(i) * 1 * NH * HS + (j)]
-#define gL(i) gL[(i) * NH]
-#define gD(i) gD[(i) * NH]
-
-#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
-#define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
-#define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
-#define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
-#define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
-
-#define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
-#define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
-#define sP(i,j) sP[(i) * TILE_SIZE + (j)]
-#define sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
-#define sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
-#define sdS_T(i,j) sdS[(i) + (j) * TILE_SIZE]
-
-#undef TILE_SIZE
-
-#define TILE_SIZE 64
-
-
 #undef TILE_SIZE
 #undef HEAD_SIZE
-#undef gQ
-#undef gK
-#undef gV
-
-#undef gdQ
-#undef gdK
-#undef gdV
-
-#undef gdO
-#undef gL
-#undef gD
-
 #undef sQ
-#undef sK
 #undef sK_T
 #undef sV
-#undef sV_T
 
-#undef sdO
-#undef sdQ
-#undef sP
-#undef sP_T
-#undef sdS
-#undef sdS_T
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #define Q_TILE_SIZE 64
 #define KV_TILE_SIZE 128
 #define HEAD_SIZE 64
-//
+
 #define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
 #define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
 #define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
-//
+
 #define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
 #define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
 #define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
-//
+
 #define gdO(i,j) gdO[(i) * 1 * NH * HS + (j)]
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
-//
+
 #define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
 #define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
-// #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
-// #define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
-//
+
 #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
-// #define sP(i,j) sP[(i) * TILE_SIZE + (j)]
-// #define sP_T(i,j) sP[(i) + (j) * TILE_SIZE]
+
 #define sdS(i,j) sdS[(i) * KV_TILE_SIZE + (j)]
 #define sdS_T(i,j) sdS[(i) + (j) * KV_TILE_SIZE]
-//#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
 
-
-// #undef sQ
-// #undef sK
-// #undef sK_T
 #undef sdS
 #undef sdS_T
 
 
-// #define Q_TILE_SIZE 64
-// #define KV_TILE_SIZE 128
-// #define HEAD_SIZE 64
 
-// #define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
-// #define sK(i,j) sK[(i) + (j) * KV_TILE_SIZE]
-// #define sK_T(i,j) sK[(i) * KV_TILE_SIZE + (j)]
-// #define sK_row(i,j) sK[(i) * HEAD_SIZE + (j) ]
-// #define sK_T_row(i,j) sK_T[(i) * KV_TILE_SIZE + (j)]
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sQ_col(i,j) sQ[(i) + (j) * Q_TILE_SIZE]
-//
-// #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
-// #define sV_T(i,j) sV[(i) + (j) * HEAD_SIZE]
-// #define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
+
 #define sdO_row(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdO_col(i,j) sdO[(i) + (j) * Q_TILE_SIZE]
-// #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
-//
-// #define sdS(i,j) sdS[(i) * KV_TILE_SIZE + (j)]
-// #define sdS_T(i,j) sdS[(i) + (j) * KV_TILE_SIZE]
+
 #define sdS(i,j) sdS[(i) + (j) * Q_TILE_SIZE]
 #define sdS_T(i,j) sdS[(i) * Q_TILE_SIZE + (j)]
 
 
-// todo
-// rdS should be in column major
+
 __global__ __launch_bounds__(256)
 void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int NH, int HS) {
