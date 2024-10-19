@@ -1041,7 +1041,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 
 #define Q_TILE_SIZE 64
 #define KV_TILE_SIZE 128
-#define HEAD_SIZE 64
 
 #define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
 #define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
@@ -1050,8 +1049,11 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sQ_col(i,j) sQ[(i) + (j) * Q_TILE_SIZE]
+#define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
+
 #define sdO_row(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdO_col(i,j) sdO[(i) + (j) * Q_TILE_SIZE]
+
 
 #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 #define sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
