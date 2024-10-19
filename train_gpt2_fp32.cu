@@ -4915,12 +4915,13 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
 
         // now do the forward pass
         layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C);
-        matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
+//        matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
 //         attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
 //         void attention_forward(float* out, float* qkvr, float* att,
 //                                float* inp,
 //                                int B, int T, int C, int NH)
-        flash_attention_forward(l_atty, scratch, l_att, B, T, C, NH);
+        matmul_forward(l_qkvr, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
+        flash_attention_forward(l_atty, l_qkvr, l_att, B, T, C, NH);
 //         void flash_attention_forward(float* out, float* inp, float* l,
 //                                         int B, int T, int C, int NH)
         matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
@@ -5086,7 +5087,7 @@ void gpt2_backward(GPT2 *model) {
 //         void flash_attention_forward(float* out, float* inp, float* l,
 //                                         int B, int T, int C, int NH)
 
-        flash_attention_backward(dl_bt4c, scratch, dl_btc, l_atty, l_att, l_fch, B, T, C, NH);
+        flash_attention_backward(dl_bt4c, l_qkvr, dl_btc, l_atty, l_att, l_fch, B, T, C, NH);
 //         void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* l, float* d,
 //                                         int B, int T, int C, int NH)
         matmul_backward(dl_btc, dl_qkvw, dl_qkvb, dl_bt4c, l_ln1, l_qkvw, B, T, C, 3 * C);
