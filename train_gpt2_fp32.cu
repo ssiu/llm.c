@@ -700,6 +700,11 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
 #define FLOAT4(value) reinterpret_cast<float4*>(&(value))[0]
 
+
+
+
+
+
 __global__ __launch_bounds__(256)
 void flash_attention_forward_kernel4(float* out, float* inp, float* l,
                                 int B, int T, int NH, int HS) {
@@ -1042,7 +1047,7 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 }
 
 
-#undef TILE_SIZE
+
 
 #undef sQ
 #undef sK_T
@@ -1054,10 +1059,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define KV_TILE_SIZE 128
 
 
-#define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
-#define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
-#define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
-
 #define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
 #define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
 #define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
@@ -1066,12 +1067,11 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
 
-#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
+
 #define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
 #define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
 
-#define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
-#define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
+//#define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
 
 
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
@@ -1081,9 +1081,8 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define sdO_col(i,j) sdO[(i) + (j) * Q_TILE_SIZE]
 
 #define sdS(i,j) sdS[(i) + (j) * Q_TILE_SIZE]
-#define sdS_T(i,j) sdS[(i) * Q_TILE_SIZE + (j)]
 
-
+#define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 
 __global__ __launch_bounds__(256)
 void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
@@ -1144,7 +1143,6 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
     float* sQ = &sharedMemory[0];
     float* sdO = sQ + Q_TILE_SIZE * Q_TILE_SIZE;
     float* sK = sdO + Q_TILE_SIZE * Q_TILE_SIZE;
-    float* sK_T = sK;
     float* sdS = sQ;
     float* sdQ = sQ;
 
