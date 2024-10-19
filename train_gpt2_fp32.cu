@@ -1022,8 +1022,7 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
 
 }
 
-
-
+#undef sK_T
 
 // preprocessing D = rowsum(dO * O)
 __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
@@ -1046,7 +1045,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
     d[offset_d] = reg_d;
 }
 
-#undef sK_T
 
 #define Q_TILE_SIZE 64
 #define KV_TILE_SIZE 128
