@@ -1872,6 +1872,7 @@ __global__ void flash_attention_backward_preprocessing_kernel2(float* d, float* 
     float* gD = &d[d_global_offset]
 
     int thread_row = warp_id * 8 + (lane_id / 16) * 4;
+    int thread_row = warp_id * 8 + (lane_id / 16) * 4;
     int thread_col = (lane_id % 16) * 4;
 
     float tO[4][4];
