@@ -1054,9 +1054,9 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 #define sdO_row(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdO_col(i,j) sdO[(i) + (j) * Q_TILE_SIZE]
 
-
-#define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 #define sdS(i,j) sdS[(i) * TILE_SIZE + (j)]
+#define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
+
 
 
 __global__ __launch_bounds__(256)
@@ -1496,6 +1496,160 @@ void flash_attention_backward_kernel4(float* dinp, float* inp, float* dout, floa
 }
 
 
+__global__ void flash_attention_backward_kernel0(float* dinp, float* inp, float* dout, float* out, float* l,
+                                int B, int T, int NH, int HS) {
+// inp/dinp are (B, T, 3C), (B, T, 3, NH, HS) Q,K,V
+//
+// att/datt/dpreatt are (B, NH, T, T)
+// dout is (B, T, C)
+// l is (B, T, NH)
+// d is (B, T, NH)
+// blockDim.x = NH
+// blockDim.y = T
+// blockDim.z = B
+
+// each threadblock use 1 thread, computing a single row of dq, dk and dv
+    // offset for the dq,dk,dv rows that this
+    int q_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset_start = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // offset for the q,k,v of the corresponding head
+    int q_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_offset_current = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+
+    // following flashattention 2, we only store (log (L) + m) instead of L, m
+    int l_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
+    int l_offset_current = blockIdx.z * T * NH + blockIdx.y * NH + blockIdx.x;
+
+    int qkv_T_increment = 3 * NH * HS;
+    int o_T_increment = NH * HS;
+    int l_T_increment = NH;
+
+    float* gQ = &inp[0];
+    float* gK = &inp[0];
+    float* gV = &inp[0];
+    float* gO = &out[0];
+    float* gdO = &dout[0];
+
+    float* gdQ = &dinp[0];
+    float* gdK = &dinp[0];
+    float* gdV = &dinp[0];
+
+
+
+    // HS = 64
+    float rdQ[64] = {0.0f};
+    float rdK[64] = {0.0f};
+    float rdV[64] = {0.0f};
+
+
+
+    // logf
+    // dv
+    // loop over T
+    for (int j=0; j < T; j++) {
+
+        if (j >= blockIdx.y) {
+            // compute the exponential term
+            float qk = 0;
+            float ll = l[l_offset_start + j * l_T_increment];
+            // inner product for QK^T
+            for (int k=0; k < HS; k++){
+                qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
+            }
+            float e = expf(qk / sqrtf(HS) - ll);
+
+            for (int i=0; i < HS;i++) {
+                rdV[i] += e * gdO[o_offset_start + j * o_T_increment + i];
+            }
+        }
+    }
+
+    for (int i=0;i<HS;i++){
+        //printf("checking inside kernel %d %f\n", i, rdV[i]);
+        gdV[v_offset_current + i] = rdV[i];
+    }
+
+
+    // dk
+    for (int j=0; j < T; j++) {
+        if (j >= blockIdx.y) {
+            // exp(qk^T-m)/L
+            float qk = 0;
+            float ll = l[l_offset_start + j * l_T_increment];
+            for (int k=0;k<HS;k++) {
+                qk += gQ[q_offset_start + j * qkv_T_increment + k] * gK[k_offset_current + k];
+            }
+            float e = expf(qk / sqrtf(HS) - ll);
+
+            // dOV^T/
+            float dov = 0;
+            for (int k=0; k<HS; k++) {
+                dov += gdO[o_offset_start + j * o_T_increment + k] * gV[v_offset_current + k];
+            }
+            // dO O^T
+            float doo = 0;
+            for (int k=0; k < HS; k++) {
+                doo += gdO[o_offset_start + j * o_T_increment + k] * gO[o_offset_start + j * o_T_increment + k];
+            }
+            //printf("INSIDE KERNEL, doo = %f, dov = %f\n", doo, dov);
+            for (int i=0;i< HS; i++){
+                //printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, gV[v_offset_current + i], gO[o_offset_start + j * o_T_increment + i]);
+                rdK[i] += e * (dov - doo) * gQ[q_offset_start + j * qkv_T_increment + i ];
+            }
+        }
+    }
+
+//    for (int i=0;i<HS;i++) {
+//        printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, inp[2 * HS + i], out[i]);
+//    }
+
+//    for (int i=0;i<HS;i++) {
+//        printf("INSIDE KERNEL, i = %d, o = %f, v = %f\n", i, inp[2 * HS + i], inp[i]);
+//    }
+
+    for (int i=0;i<HS;i++) {
+        gdK[k_offset_current + i] = rdK[i] / sqrtf(HS);
+    }
+
+    // dq
+    for (int j=0; j < T; j++) {
+        if (j <= blockIdx.y) {
+            float qk = 0;
+            float ll = l[l_offset_current];
+            for (int k=0;k<HS;k++) {
+                qk += gQ[q_offset_current + k] * gK[k_offset_start + j * qkv_T_increment + k];
+            }
+            float e = expf(qk / sqrtf(HS) - ll);
+
+            // dOV^T/
+            float dov = 0;
+            for (int k=0; k < HS; k++) {
+                dov += gdO[o_offset_current + k] * gV[v_offset_start + j * qkv_T_increment + k];
+            }
+            // dO O^T
+            float doo = 0;
+            for (int k=0; k < HS; k++) {
+                doo += gdO[o_offset_current + k] * gO[o_offset_current + k];
+            }
+
+            for (int i=0;i< HS; i++){
+                rdQ[i] += e * (dov - doo) * gK[k_offset_start + j * qkv_T_increment + i ];
+            }
+        }
+
+    }
+
+    for (int i=0;i<HS;i++) {
+        gdQ[q_offset_current + i] = rdQ[i] / sqrtf(HS);
+    }
+}
+
+
 
 // ----------------------------------------------------------------------------
 // kernel launchers
@@ -1525,16 +1679,22 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
 
     int HS = C / NH; // head size
 
-    // preprocess D = rowsum(dO * O)
-    dim3 dimGrid_preprocessing1(NH, T, B);
-    dim3 dimBlock_preprocessing1(1);
-    flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
 
-    dim3 dimGrid4(NH, T / 128, B);
-    dim3 dimBlock4(256);
-    int maxbytes4 = 65536;
-    cudaFuncSetAttribute(flash_attention_backward_kernel4, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes4);
-    flash_attention_backward_kernel4<<<dimGrid4, dimBlock4, maxbytes4>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
+    // flash attention backward v0
+    dim3 dimGrid0(NH, T, B);
+    dim3 dimBlock0(1);
+    flash_attention_backward_kernel0<<<dimGrid0, dimBlock0>>>(dinp, inp, dout, out, l, B, T, NH, HS);
+
+    // preprocess D = rowsum(dO * O)
+//     dim3 dimGrid_preprocessing1(NH, T, B);
+//     dim3 dimBlock_preprocessing1(1);
+//     flash_attention_backward_preprocessing_kernel1<<<dimGrid_preprocessing1, dimBlock_preprocessing1>>>(d, dout, out, B, T, NH, HS);
+//
+//     dim3 dimGrid4(NH, T / 128, B);
+//     dim3 dimBlock4(256);
+//     int maxbytes4 = 65536;
+//     cudaFuncSetAttribute(flash_attention_backward_kernel4, cudaFuncAttributeMaxDynamicSharedMemorySize, maxbytes4);
+//     flash_attention_backward_kernel4<<<dimGrid4, dimBlock4, maxbytes4>>>(dinp, inp, dout, out, l, d, B, T, NH, HS);
 
     cudaCheck(cudaGetLastError());
 }
