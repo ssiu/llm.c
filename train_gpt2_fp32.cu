@@ -1046,42 +1046,21 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
     d[offset_d] = reg_d;
 }
 
-
-
-
-#undef sQ
 #undef sK_T
-#undef sV
-
-
 
 #define Q_TILE_SIZE 64
 #define KV_TILE_SIZE 128
-
-
 #define gdQ(i,j) gdQ[(i) * 3 * NH * HS + (j)]
 #define gdK(i,j) gdK[(i) * 3 * NH * HS + (j)]
 #define gdV(i,j) gdV[(i) * 3 * NH * HS + (j)]
-
 #define gdO(i,j) gdO[(i) * 1 * NH * HS + (j)]
-#define gL(i) gL[(i) * NH]
-#define gD(i) gD[(i) * NH]
-
-
 #define sK(i,j) sK[(i) * HEAD_SIZE + (j)]
 #define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
-
-//#define sdO(i,j) sdO[(i) * HEAD_SIZE + (j)]
-
-
 #define sQ_row(i,j) sQ[(i) * HEAD_SIZE + (j)]
 #define sQ_col(i,j) sQ[(i) + (j) * Q_TILE_SIZE]
-
 #define sdO_row(i,j) sdO[(i) * HEAD_SIZE + (j)]
 #define sdO_col(i,j) sdO[(i) + (j) * Q_TILE_SIZE]
-
 #define sdS(i,j) sdS[(i) + (j) * Q_TILE_SIZE]
-
 #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 
 __global__ __launch_bounds__(256)
