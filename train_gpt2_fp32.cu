@@ -700,7 +700,7 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
 
-#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
+#define FLOAT4(value) reinterpret_cast<float4*>(&(value))[0]
 
 
 __global__ __launch_bounds__(256)
