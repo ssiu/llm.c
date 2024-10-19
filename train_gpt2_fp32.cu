@@ -695,16 +695,12 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 #define gQ(i,j) gQ[(i) * 3 * NH * HS + (j)]
 #define gK(i,j) gK[(i) * 3 * NH * HS + (j)]
 #define gV(i,j) gV[(i) * 3 * NH * HS + (j)]
+#define gO(i,j) gO[(i) * 1 * NH * HS + (j)]
 
 #define gL(i) gL[(i) * NH]
 #define gD(i) gD[(i) * NH]
 
-#define sQ(i,j) sQ[(i) * HEAD_SIZE + (j)]
-#define sK_T(i,j) sK[(i) + (j) * HEAD_SIZE]
-#define sV(i,j) sV[(i) * HEAD_SIZE + (j)]
-
-
-
+#define FLOAT4(value) *reinterpret_cast<float4*>(&(value))[0]
 
 
 __global__ __launch_bounds__(256)
@@ -1020,6 +1016,7 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
     }
 
 }
+
 
 // preprocessing D = rowsum(dO * O)
 __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
