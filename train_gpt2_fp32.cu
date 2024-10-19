@@ -2122,7 +2122,13 @@ void gpt2_forward(GPT2 *model, int* inputs, int* targets, int B, int T) {
         // now do the forward pass
         layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C);
         matmul_forward(scratch, l_ln1, l_qkvw, l_qkvb, B, T, C, 3*C);
-        attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
+//         attention_forward(l_atty, l_qkvr, l_att, scratch, B, T, C, NH);
+//         void attention_forward(float* out, float* qkvr, float* att,
+//                                float* inp,
+//                                int B, int T, int C, int NH)
+        flash_attention_forward(l_atty, scratch, l_att, B, T, C, NH);
+//         void flash_attention_forward(float* out, float* inp, float* l,
+//                                         int B, int T, int C, int NH)
         matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C);
         residual_forward(l_residual2, residual, l_attproj, B*T*C);
         layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C);
@@ -2276,7 +2282,19 @@ void gpt2_backward(GPT2 *model) {
         float* buffer_a = l_atty;
         float* buffer_b = l_fch;        // this is B x T x 4C, so even larger than what we need
 
-        attention_backward(dl_bt4c, buffer_b, dl_preatt, scratch, buffer_a, dl_btc, l_qkvr, l_att, B, T, C, NH);
+//         attention_backward(dl_bt4c, buffer_b, dl_preatt, scratch, buffer_a, dl_btc, l_qkvr, l_att, B, T, C, NH);
+//         void attention_backward(float* dinp, float* dqkvr, float* dpreatt, float* datt, float* scratch,
+//                                 const float* dout,
+//                                 const float* qkvr, const float* att,
+//                                 int B, int T, int C, int NH)
+//
+//         flash_attention_forward(l_atty, scratch, l_att, B, T, C, NH);
+//         void flash_attention_forward(float* out, float* inp, float* l,
+//                                         int B, int T, int C, int NH)
+
+        flash_attention_backward(dl_bt4c, scratch, dl_btc, l_atty, l_att, l_fch, B, T, C, NH);
+//         void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, float* l, float* d,
+//                                         int B, int T, int C, int NH)
         matmul_backward(dl_btc, dl_qkvw, dl_qkvb, dl_bt4c, l_ln1, l_qkvw, B, T, C, 3 * C);
         // layernorm backward does += to dresidual, so it correctly accumulates gradient for the Attention block above
         layernorm_backward(dresidual, dl_ln1w, dl_ln1b, dl_btc, residual, l_ln1w, l_ln1_mean, l_ln1_rstd, B, T, C);
