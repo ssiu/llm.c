@@ -1106,41 +1106,33 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
     // blockDim.y = T
     // blockDim.z = B
 
-    int thread_id = threadIdx.x;
     int warp_id = threadIdx.x / 32;
     int lane_id = threadIdx.x % 32;
 
-
-    int q_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int k_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
-    int v_global_offset_start = blockIdx.z * T * 3 * NH * HS + 0 * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
-    int o_global_offset_start = blockIdx.z * T * 1 * NH * HS + 0 * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-
     // offset for the q,k,v of the corresponding head
-    int q_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
-    int k_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
-    int v_global_offset_current = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
-    int o_global_offset_current = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int q_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 3 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
+    int k_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 1 * NH * HS + blockIdx.x * HS;
+    int v_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
+    int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
     // following flashattention 2, we only store (log (L) + m) instead of L, m
-    int ld_global_offset_start = blockIdx.z * T * NH + 0 * NH + blockIdx.x;
-    int ld_global_offset_current = blockIdx.z * T * NH + blockIdx.y * 2 * Q_TILE_SIZE * NH + blockIdx.x;
+    int ld_global_offset = blockIdx.z * T * NH + blockIdx.y * 2 * Q_TILE_SIZE * NH + blockIdx.x;
 
     int q_increment = Q_TILE_SIZE * 3 * NH * HS;
     int o_increment = Q_TILE_SIZE * NH * HS;
     int ld_increment = Q_TILE_SIZE * NH;
 
-    float* gQ = &inp[q_global_offset_current];
-    float* gK = &inp[k_global_offset_current];
-    float* gV = &inp[v_global_offset_current];
-    float* gdO = &dout[o_global_offset_current];
-    float* gL = &l[ld_global_offset_current];
-    float* gD = &d[ld_global_offset_current];
+    float* gQ = &inp[q_global_offset];
+    float* gK = &inp[k_global_offset];
+    float* gV = &inp[v_global_offset];
+    float* gdO = &dout[o_global_offset];
+    float* gL = &l[ld_global_offset];
+    float* gD = &d[ld_global_offset];
 
     // output
-    float* gdQ = &dinp[q_global_offset_current];
-    float* gdK = &dinp[k_global_offset_current];
-    float* gdV = &dinp[v_global_offset_current];
+    float* gdQ = &dinp[q_global_offset];
+    float* gdK = &dinp[k_global_offset];
+    float* gdV = &dinp[v_global_offset];
 
     extern __shared__ float sharedMemory[];
 
@@ -1177,7 +1169,6 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
     float rdO[4];
     float rP[8];
     float rdS[8];
-    float tK[8][4];
     float tV[8][4];
     float tQ[4][4];
     float tdO[4][4];
