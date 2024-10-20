@@ -1035,7 +1035,7 @@ void flash_attention_forward_kernel4(float* out, float* inp, float* l,
 #define sdQ(i,j) sdQ[(i) * HEAD_SIZE + (j)]
 
 // preprocessing D = rowsum(dO * O)
-__global__ void flash_attention_backward_preprocessing_kernel2(float* d, float* dout, float* out,
+__global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
                                 int B, int T, int NH, int HS) {
     // both dO and O are (B, T, NH, HS)
     // d is (B, T, NH)
