@@ -1115,7 +1115,6 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
     int v_global_offset = blockIdx.z * T * 3 * NH * HS + blockIdx.y * KV_TILE_SIZE * 3 * NH * HS + 2 * NH * HS + blockIdx.x * HS;
     int o_global_offset = blockIdx.z * T * 1 * NH * HS + blockIdx.y * 2 * Q_TILE_SIZE * 1 * NH * HS + 0 * NH * HS + blockIdx.x * HS;
 
-    // following flashattention 2, we only store (log (L) + m) instead of L, m
     int ld_global_offset = blockIdx.z * T * NH + blockIdx.y * 2 * Q_TILE_SIZE * NH + blockIdx.x;
 
     int q_increment = Q_TILE_SIZE * 3 * NH * HS;
