@@ -703,20 +703,21 @@ __global__ void __launch_bounds__(16*16, 2) matmul_forward_kernel4(float* out,
 __global__ __launch_bounds__(256)
 void flash_attention_forward_kernel1(float* out, float* inp, float* l,
                                 int B, int T, int NH, int HS) {
+
+    // inp (B, T, 3, NH, HS)
+    // out (B, T, NH, HS)
+    // l (B, T, NH)
+
     // blockDim.x = NH
     // blockDim.y = T
     // blockDim.z = B
-    // inp is (B, T, 3, NH, HS)
-    // out is (B, T, NH, HS)
-    // l is (B, T, NH)
 
     // we use 256 threads = 8 warps in each threadblock
     // we use 64KB of shared memory for K, V so each uses 32KB of shared memory
     // Q is stored in registers
-    // 32KB of shared memory can store 32*1024/4 = 8192 floats = 128 * 64 floats
-    // so each threadblock computes 128 * 64 tile of O, and each warp does 16 * 64 tile of O
+    // 32KB of shared memory can store 32 * 1024 / 4 = 8192 floats = 128 * 64 floats
+    // so each threadblock computes a 128 * 64 tile of O, and each warp does a 16 * 64 tile of O
     // following flash attention 2, we only store (m + log l) instead of (m, l) for the backward pass
-
 
     int warp_id = threadIdx.x / 32;
     int lane_id = threadIdx.x % 32;
@@ -742,11 +743,9 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
 
     // addresses for loading data from global to shared
     // as well as for register tiling
-    int warp_row = warp_id * 16;
-    int thread_row = (lane_id / 16) * 4;
+
+    int thread_row = warp_id * 16 + (lane_id / 16) * 4;
     int thread_col = (lane_id % 16) * 4;
-
-
 
 
     // main loop
@@ -773,8 +772,8 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
     // load gQ to sQ
 
     for (int i = 0; i < 4; i++) {
-        FLOAT4(tQ[i][0]) = FLOAT4(gQ(warp_row + thread_row + i, thread_col));
-        FLOAT4(tQ[i+4][0]) = FLOAT4(gQ(warp_row + thread_row + i + 8, thread_col));
+        FLOAT4(tQ[i][0]) = FLOAT4(gQ(thread_row + i, thread_col));
+        FLOAT4(tQ[i+4][0]) = FLOAT4(gQ(thread_row + i + 8, thread_col));
     }
 
 
@@ -783,14 +782,14 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
 
 
         for (int i = 0; i < 4; i++) {
-            FLOAT4(tK[i][0]) = FLOAT4(gK(warp_row + thread_row + i, thread_col));
-            FLOAT4(tK[i+4][0]) = FLOAT4(gK(warp_row + thread_row + i + 8, thread_col));
+            FLOAT4(tK[i][0]) = FLOAT4(gK(thread_row + i, thread_col));
+            FLOAT4(tK[i+4][0]) = FLOAT4(gK(thread_row + i + 8, thread_col));
         }
 
         for (int i = 0; i < 4; i++) {
             for (int j=0; j < 4; j++) {
-                sK_T(thread_col + j, warp_row + thread_row + i) = tK[i][j];
-                sK_T(thread_col + j, warp_row + thread_row + i + 8) = tK[i+4][j];
+                sK_T(thread_col + j, thread_row + i) = tK[i][j];
+                sK_T(thread_col + j, thread_row + i + 8) = tK[i+4][j];
             }
         }
 
@@ -798,8 +797,8 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
 
         // load gV to sV
         for (int i = 0; i < 4; i++) {
-            FLOAT4(sV(warp_row + thread_row + i, thread_col)) = FLOAT4(gV(warp_row + thread_row + i, thread_col));
-            FLOAT4(sV(warp_row + thread_row + i + 8, thread_col)) = FLOAT4(gV(warp_row + thread_row + i + 8, thread_col));
+            FLOAT4(sV(thread_row + i, thread_col)) = FLOAT4(gV(thread_row + i, thread_col));
+            FLOAT4(sV(thread_row + i + 8, thread_col)) = FLOAT4(gV(thread_row + i + 8, thread_col));
         }
 
         __syncthreads();
@@ -835,25 +834,25 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
 
                 for (int i = 0; i < 4; i++) {
                     for (int j = 0; j < 4; j++) {
-                        if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j) {
+                        if (tile == blockIdx.y  && thread_row + i < thread_col + j) {
                             tS[i][j] = -FLT_MAX;
                         } else {
                             tS[i][j] += rQ[i] * rK[j];
                         }
 
-                        if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j) {
+                        if (tile == blockIdx.y  && thread_row + i + 8 < thread_col + j) {
                             tS[i + 4][j] = -FLT_MAX;
                         } else {
                             tS[i + 4][j] += rQ[i + 4] * rK[j];
                         }
 
-                        if (tile == blockIdx.y  && warp_row + thread_row + i < thread_col + j + 64) {
+                        if (tile == blockIdx.y  && thread_row + i < thread_col + j + 64) {
                             tS[i][j+4] = -FLT_MAX;
                         } else {
                             tS[i][j+4] += rQ[i] * rK[j+4];
                         }
 
-                        if (tile == blockIdx.y  && warp_row + thread_row + i + 8 < thread_col + j + 64) {
+                        if (tile == blockIdx.y  && thread_row + i + 8 < thread_col + j + 64) {
                             tS[i+4][j+4] = -FLT_MAX;
                         } else {
                             tS[i+4][j+4] += rQ[i+4] * rK[j+4];
@@ -864,7 +863,7 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
         }
 
 
-        //rescale preatt by 1/sqrt(HS)
+        // rescale preatt by 1/sqrt(HS)
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 if (tS[i][j] != -FLT_MAX) {
@@ -886,7 +885,7 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
             }
         }
 
-        //inter-warp reduction
+        // inter-warp reduction
         for (int i=0; i < 8; i++) {
             for (int offset = 8; offset > 0; offset /= 2) {
                rM[i] = fmaxf(rM[i], __shfl_down_sync(mask, rM[i], offset));
@@ -928,7 +927,7 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
             }
         }
 
-        //inter-warp reduction
+        // inter-warp reduction
         for (int i=0; i < 8; i++) {
             for (int offset = 8; offset > 0; offset /= 2) {
                rD[i] += __shfl_down_sync(mask, rD[i], offset);
@@ -956,8 +955,6 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
         }
 
         // add PV to rO
-
-
         for (int step = 0; step < 2; step++) {
             for (int k_fragment_outer = 0; k_fragment_outer < 16; k_fragment_outer++) {
                 for (int k_fragment_inner = 0; k_fragment_inner < 4; k_fragment_inner++) {
@@ -1003,16 +1000,15 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
     // store l back to gL
     if (lane_id == 0 || lane_id == 16) {
         for (int i = 0; i < 4; i++) {
-            //printf("kernel 1: address = %d, i = %d, l = %f\n", l_global_offset + (warp_row + thread_row + i) * NH, blockIdx.y * 64 + warp_row + thread_row + i, rM[i] + logf(rL[i]));
-            gL(warp_row + thread_row + i) = rM[i] + logf(rL[i]);
-            gL(warp_row + thread_row + 8 + i) = rM[i + 4] + logf(rL[i + 4]);
+            gL(thread_row + i) = rM[i] + logf(rL[i]);
+            gL(thread_row + 8 + i) = rM[i + 4] + logf(rL[i + 4]);
         }
     }
 
     // store rO to gO
     for (int i=0; i < 4; i++) {
-        FLOAT4(gO(warp_row + thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
-        FLOAT4(gO(warp_row + thread_row + 8 + i, thread_col)) = FLOAT4(rO[i+4][0]);
+        FLOAT4(gO(thread_row + i, thread_col)) = FLOAT4(rO[i][0]);
+        FLOAT4(gO(thread_row + 8 + i, thread_col)) = FLOAT4(rO[i+4][0]);
     }
 
 }
@@ -1037,15 +1033,17 @@ void flash_attention_forward_kernel1(float* out, float* inp, float* l,
 // preprocessing D = rowsum(dO * O)
 __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* dout, float* out,
                                 int B, int T, int NH, int HS) {
-    // dout is (B, T, NH, HS)
-    // out is (B, T, NH, HS)
-    // d is (B, T, NH)
+    // dout (B, T, NH, HS)
+    // out (B, T, NH, HS)
+    // d (B, T, NH)
+
     // blockDim.x = NH
     // blockDim.y = T / 256
     // blockDim.z = B
-    // Each half-warps compute 4 rows
-    // Each warp computes 8 rows
-    // we use 1024 threads = 32 warps per block, so each block computes 256 rows
+
+    // Each half-warps compute 4 rows,
+    // so each warp computes 8 rows
+    // We use 1024 threads = 32 warps per block, so each block computes 256 rows
     // so we have B * T / 256 * NH blocks
 
     int o_global_offset = blockIdx.z * T * NH * HS + blockIdx.y * 256 * NH * HS + blockIdx.x * HS;
@@ -1060,7 +1058,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
     float* gdO = &dout[o_global_offset];
     float* gD = &d[d_global_offset];
 
-
     int thread_row = warp_id * 8 + (lane_id / 16) * 4;
     int thread_col = (lane_id % 16) * 4;
 
@@ -1068,7 +1065,6 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
     float tdO[4][4];
     float sum[4] = {0.0f};
 
-    // load 4 rows
     for (int i=0;i<4;i++){
         FLOAT4(tO[i][0]) = FLOAT4(gO(thread_row + i, thread_col));
         FLOAT4(tdO[i][0]) = FLOAT4(gdO(thread_row + i, thread_col));
@@ -1099,19 +1095,16 @@ __global__ void flash_attention_backward_preprocessing_kernel1(float* d, float* 
 __global__ __launch_bounds__(256)
 void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, float* out, float* l, float* d,
                                 int B, int T, int NH, int HS) {
+    // dinp (B, T, 3, NH, HS)
     // inp  (B, T, 3, NH, HS)
     // out  (B, T, NH, HS)
     // dout (B, T, NH, HS)
     // l    (B, T, NH)
     // d    (B, T, NH)
 
-    // dinp (B, T, 3, NH, HS)
-
     // blockDim.x = NH
     // blockDim.y = T
     // blockDim.z = B
-
-    // K in shared memory, V in register
 
     int thread_id = threadIdx.x;
     int warp_id = threadIdx.x / 32;
@@ -1157,13 +1150,15 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
     float* sdS = sQ;
     float* sdQ = sQ;
 
-    // offset for register tiling for dK, dV
+    // offset for register tiling for dK and dV
     int thread_row_128_x_64 = warp_id * 16 + (lane_id / 16) * 4;
     int thread_col_128_x_64 = (lane_id % 16) * 4;
 
+    // offset for register tiling for S and dP
     int thread_row_64_x_128 = thread_col_128_x_64;
     int thread_col_64_x_128 = thread_row_128_x_64;
 
+    // offset for register tiling for dQ
     int thread_row_64_x_64 = warp_id * 8 + (lane_id / 16) * 4;
     int thread_col_64_x_64 = (lane_id % 16) * 4;
 
@@ -1193,8 +1188,6 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
     float (&tP)[4][8] = tS;
     float tdP[4][8] = {0.0f};
     float (&tdS)[4][8] = tdP;
-    // first load K into shared memory and V into registers
-    // everything is TILE_SIZE * HEAD_SIZE in row major
 
     for (int i=0; i < 4;i ++){
         FLOAT4(sK(thread_row_128_x_64 + i, thread_col_128_x_64)) = FLOAT4(gK(thread_row_128_x_64 + i, thread_col_128_x_64));
@@ -1205,12 +1198,8 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
 
     for (int q_tile = 2 * blockIdx.y; q_tile < T / Q_TILE_SIZE; q_tile++) {
 
-
         // load Q, dO into shared memory
-
         for (int i=0; i < 4;i ++){
-            //FLOAT4(sQ(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
-            //FLOAT4(sdO(thread_row_64_x_64 + i, thread_col_64_x_64)) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(tQ[i][0]) = FLOAT4(gQ(thread_row_64_x_64 + i, thread_col_64_x_64));
             FLOAT4(tdO[i][0]) = FLOAT4(gdO(thread_row_64_x_64 + i, thread_col_64_x_64));
         }
@@ -1247,7 +1236,6 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
         for (int k_fragment = 0; k_fragment < HEAD_SIZE; k_fragment++) {
             FLOAT4(rQ[0]) = FLOAT4(sQ_col(thread_row_64_x_128, k_fragment));
             for (int i = 0; i < 4; i++) {
-                //rQ[i] = sQ_col(thread_row_64_x_128 + i, k_fragment);
                 rK[i] = sK_T(k_fragment, thread_col_64_x_128 + i);
                 rK[i+4] = sK_T(k_fragment, thread_col_64_x_128 + 8 + i);
             }
@@ -1304,7 +1292,6 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
                 int k_fragment = k_fragment_outer * 4 + k_fragment_inner;
                 FLOAT4(rdO[0]) = FLOAT4(sdO_col(thread_row_64_x_128, k_fragment));
                 for (int i = 0; i < 4; i++) {
-                    //rdO[i] = sdO(thread_row_64_x_128 + i, k_fragment);
                     rV[i] = __shfl_sync(mask, tV[i][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                     rV[i+4] = __shfl_sync(mask, tV[i+4][k_fragment_inner], (lane_id / 16) * 16  + k_fragment_outer);
                 }
@@ -1367,7 +1354,6 @@ void flash_attention_backward_kernel1(float* dinp, float* inp, float* dout, floa
                 for (int i = 0; i < 4; i++) {
                     rP[i] = __shfl_sync(mask, tP[k_fragment_inner][i], (lane_id / 16) * 16  + k_fragment_outer);
                     rP[i+4] = __shfl_sync(mask, tP[k_fragment_inner][i + 4], (lane_id / 16) * 16  + k_fragment_outer);
-                    //rdO[i] = sdO(k_fragment, thread_col_128_x_64 + i);
                 }
                 FLOAT4(rdO[0]) = FLOAT4(sdO_row(k_fragment, thread_col_128_x_64 ));
                 for (int i = 0; i < 8; i++) {
@@ -1506,9 +1492,9 @@ void flash_attention_forward(float* out, float* inp, float* l,
     // head size
     int HS = C / NH;
 
-    // inp is (B, T, 3, NH, HS)
-    // out is (B, T, NH, HS)
-    // l is (B, T, NH)
+    // inp (B, T, 3, NH, HS)
+    // out (B, T, NH, HS)
+    // l (B, T, NH)
 
     dim3 dimGrid(NH, T / 128, B);
     dim3 dimBlock(256);
@@ -1526,12 +1512,12 @@ void flash_attention_backward(float *dinp, float* inp, float* dout, float* out, 
     // head size
     int HS = C / NH;
 
-    // dinp is (B, T, 3, NH, HS)
-    // inp is (B, T, 3, NH, HS)
-    // dout is (B, T, NH, HS)
-    // out is (B, T, NH, HS)
-    // l is (B, T, NH)
-    // d is (B, T, NH)
+    // dinp (B, T, 3, NH, HS)
+    // inp (B, T, 3, NH, HS)
+    // dout (B, T, NH, HS)
+    // out (B, T, NH, HS)
+    // l (B, T, NH)
+    // d (B, T, NH)
 
     // preprocess d = rowsum(dout * out)
     dim3 dimGrid_preprocessing(NH, T / 256, B);
